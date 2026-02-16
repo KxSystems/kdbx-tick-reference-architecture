@@ -1,18 +1,26 @@
 #!/bin/bash
 
+# Expect to be run from the x-starter directory
+
+# Source env vars
+source .env
+
+# Move to tick.q directory
+cd $TICK_DIR
+
 # Tickerplant
 # q tick.q [schema file] [log directory] -p [port number] < /dev/null > [log file] 2>&1 &
-q tick.q schemas tplogs -p 5010 -procName TP < /dev/null > proclogs/tp 2>&1 &
+q tick.q $SCHEMA_NAME $DATA_LOG_DIR -p $TICK_PORT -procName TP < /dev/null > $PROCESS_LOG_DIR/tp 2>&1 &
 
 # RDB
 # q tick/r.q [:tp port number] -p [port number] < /dev/null > [log file] 2>&1 &
-q tick/r.q :5010 -p 5011 -procName RDB < /dev/null > proclogs/rdb 2>&1 &
+q tick/r.q :$TICK_PORT -p $RDB_PORT -procName RDB < /dev/null > $PROCESS_LOG_DIR/rdb 2>&1 &
 
 # RTE
 # symbol selection example
 
 # HDB
 # q [hdb directory] -p [port number] < /dev/null > [log file] 2>&1 &
-q tplogs/schemas -p 5012 -procName HDB < /dev/null > proclogs/hdb 2>&1 &
+q $DATA_LOG_DIR/$SCHEMA_NAME -p $HDB_PORT -procName HDB < /dev/null > $PROCESS_LOG_DIR/hdb 2>&1 &
 
 # Gateway
