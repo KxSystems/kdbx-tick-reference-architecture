@@ -21,6 +21,9 @@ q tick/r.q :$TICK_PORT -p $RDB_PORT -procName RDB < /dev/null > $PROCESS_LOG_DIR
 
 # HDB
 # q [hdb directory] -p [port number] < /dev/null > [log file] 2>&1 &
+#TODO: wait until rdb started before starting hdb
 q $DATA_LOG_DIR/$SCHEMA_NAME -p $HDB_PORT -procName HDB < /dev/null > $PROCESS_LOG_DIR/hdb 2>&1 &
 
 # Gateway
+
+q gw.q -p 5013 -rdbPort 5011 -hdbPort 5012 -procName GW
