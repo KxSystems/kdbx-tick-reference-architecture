@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Expect to be run from the x-starter directory
+CWD=$(pwd)
 
 # Source env vars
 source .env
@@ -25,5 +26,5 @@ q tick/r.q :$TICK_PORT -p $RDB_PORT -procName RDB < /dev/null > $PROCESS_LOG_DIR
 q $DATA_LOG_DIR/$SCHEMA_NAME -p $HDB_PORT -procName HDB < /dev/null > $PROCESS_LOG_DIR/hdb 2>&1 &
 
 # Gateway
-
-q gw.q -p 5013 -rdbPort 5011 -hdbPort 5012 -procName GW
+cd $CWD
+q gw.q -p $GW_PORT -rdbPort $RDB_PORT -hdbPort $HDB_PORT -procName GW
