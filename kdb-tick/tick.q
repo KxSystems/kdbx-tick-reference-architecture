@@ -52,10 +52,10 @@ if[not system"t";system"t 1000";
 
 \d .
 /.u.tick[src;.z.x 1];
-// x == schema file name
+// x == tplog name prefix
 // y == tplog directory
-/TODO: logging
-/.u.tick["testSchemaName"; first cliArgs[`tplogDir]];
+/TODO: logging + better tplog naming
+.u.tick["testSchemaName"; first cliArgs[`tplogDir]];
 
 \
  globals used
