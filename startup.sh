@@ -12,6 +12,7 @@ cd $TICK_DIR
 # Tickerplant
 # q tick.q [schema file] [log directory] -p [port number] < /dev/null > [log file] 2>&1 &
 q tick.q $SCHEMA_NAME $DATA_LOG_DIR -p $TICK_PORT -procName TP < /dev/null > $PROCESS_LOG_DIR/tp 2>&1 &
+q kdb-tick/tick.q -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -p $TICK_PORT -procName TP < /dev/null > $PROCESS_LOG_DIR/tp 2>&1 &
 
 # RDB
 # q tick/r.q [:tp port number] -p [port number] < /dev/null > [log file] 2>&1 &
