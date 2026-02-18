@@ -46,14 +46,14 @@ rdbREST:{
 
 // Example curls
 
-// curl 'localhost:8080/rdb'
+// curl 'localhost:<gwPort>/rdb'
 // {"code":"400","text":"missing","details":"tab"}
 
-// curl 'localhost:8080/rdb?tab=trade'
+// curl 'localhost:<gwPort>/rdb?tab=trade'
 // <json object of all trade data in rdb>
 
-// curl 'localhost:8080/rdb?tab=trade&t1=15:34&t2=15:35'
+// curl 'localhost:<gwPort>/rdb?tab=trade&t1=15:34&t2=15:35'
 // <json object of trade data in rdb within 15:34 and 15:35>
 
-// curl 'localhost:8080/rdb?tab=trade&t1=15:34&t2=15:35&s=MSFT'
+// curl 'localhost:<gwPort>/rdb?tab=trade&t1=15:34&t2=15:35&s=MSFT'
 // <json object of trade data in rdb within 15:34 and 15:35 matching sym=`MSFT>
