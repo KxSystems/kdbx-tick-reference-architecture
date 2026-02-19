@@ -20,6 +20,8 @@ The following configuration steps are required before being able to run the tick
 * Create the `TPLOG_DIR`, `HDB_DIR`, and `PROCESS_LOG_DIR` directories.
 * Ensure the `startup.sh` and `shutdown.sh` scripts are executable.
 
+Further examples can be found within the Appendix.
+
 ### Start
 To run the system simply run the startup script:
 ```
@@ -44,3 +46,83 @@ user      72686  0.0  0.0  86164  6144 pts/4    Sl+  15:55   0:00 q kdb-tick/r.q
 user      72687  0.0  0.0  86300  6016 pts/4    Sl+  15:55   0:00 q /path/to/data/directory/hdb -p 5012 <mark>-procName HDB</mark>
 user      72688  0.0  0.0 226456  9728 pts/4    Sl+  15:55   0:00 q gw.q -p 5013 -rdbPort 5011 -hdbPort 5012 <mark>-procName GW</mark>
 </pre>
+
+## Appendix
+### Directory Trees
+<details>
+<summary>Initial Directory Tree</summary>
+
+```
+$ tree /path/to/data/directory/
+.
+├── hdb
+├── proclogs
+├── schemas
+│   ├── sample-schema-file.q
+│   └── second-schema-file.q
+└── tplogs
+
+5 directories, 2 files
+```
+</details>
+
+<details>
+<summary>Directory Tree Containing Data</summary>
+
+```
+$ tree /path/to/data/directory/
+.
+├── hdb
+│   ├── 2026.02.18
+│   │   ├── genericTab
+│   │   │   ├── c1
+│   │   │   ├── c2
+│   │   │   ├── sym
+│   │   │   └── time
+│   │   ├── quote
+│   │   │   ├── asize
+│   │   │   ├── ask
+│   │   │   ├── bid
+│   │   │   ├── bsize
+│   │   │   ├── ex
+│   │   │   ├── mode
+│   │   │   ├── sym
+│   │   │   └── time
+│   │   └── trade
+│   │       ├── price
+│   │       ├── side
+│   │       ├── size
+│   │       ├── sym
+│   │       └── time
+│   └── sym
+├── proclogs
+│   ├── hdb
+│   ├── rdb
+│   └── tp
+├── schemas
+│   ├── sample-schema-file.q
+│   └── second-schema-file.q
+└── tplogs
+    ├── testSchemaName2026.02.18
+    └── testSchemaName2026.02.19
+
+9 directories, 25 files
+```
+</details>
+
+### Schema Files
+Note that schemas must be created with the first two columns being `time` and `sym`.
+<details>
+<summary>Example contents of table schemas spread across multiple files</summary>
+
+```
+$ cat schemas/sample-schema-file.q 
+
+quote:([]time:`timespan$(); sym:`symbol$(); bid:`float$(); ask:`float$(); bsize:`long$(); asize:`long$(); mode:`char$(); ex:`char$())
+trade:([]time:`timespan$(); sym:`symbol$(); price:`float$(); size:`int$(); side:())
+
+$ cat schemas/second-schema-file.q 
+
+genericTab:([] time:`timespan$(); sym:`symbol$(); c1:(); c2:())
+```
+</details>
