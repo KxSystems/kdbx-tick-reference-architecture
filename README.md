@@ -28,6 +28,11 @@ To run the system simply run the startup script:
 $ cd x-starter
 $ ./startup.sh
 ```
+This assumes the `.env` file is in the same directory as the `startup.sh` script. For a file stored in a different location use the `-e` flag:
+```
+$ cd x-starter
+$ ./startup.sh -e /path/to/.env
+```
 
 ### Stop
 To stop the system run the shutdown script:
