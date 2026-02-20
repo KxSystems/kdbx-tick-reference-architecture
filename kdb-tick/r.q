@@ -34,4 +34,4 @@ upd:insert;
 / connect to ticker plant for (schema;(logcount;log))
 .u.rep .(hopen `$":",.u.x 0)"(.u.sub[`;`];`.u `i`L)";
 
-.log.info[("RDB successfully initialised. Connected to TP at port [%s] and HDB at location [%s]";.u.x[0];first system"pwd")];
+.log.info[("RDB successfully initialised. Connected to TP at port [%s] and HDB at location [%s]";1_.u.x[0];first system"pwd")];

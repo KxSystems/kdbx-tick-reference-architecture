@@ -47,4 +47,4 @@ q kdb-tick/r.q -p $RDB_PORT -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -tpPort :$TICK
 q kdb-tick/hdb.q -p $HDB_PORT -hdbDir $HDB_DIR -procName HDB < /dev/null > $PROCESS_LOG_DIR/hdb 2>&1 &
 
 # Gateway
-q kdb-tick/gw.q -p $GW_PORT -rdbPort $RDB_PORT -hdbPort $HDB_PORT -procName GW
+q kdb-tick/gw.q -p $GW_PORT -rdbPort $RDB_PORT -hdbPort $HDB_PORT -procName GW < /dev/null > $PROCESS_LOG_DIR/gw 2>&1 &
