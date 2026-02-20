@@ -2,6 +2,7 @@
 system"l utils/logging.q";
 .log.procStarted["GW"];
 
+// Parse command line arguments
 cliArgs:.Q.opt .z.x;
 
 rdbH:hopen`$"::",first cliArgs[`rdbPort];
