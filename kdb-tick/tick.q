@@ -30,8 +30,13 @@ cliArgs:.Q.opt .z.x;
 /system"l tick/",(src:first .z.x,enlist"sym"),".q"
 
 // Load schemas
-/TODO: logging
-{system each "l ",/:1_/:string .Q.dd[sDir;] each key sDir:hsym `$x;}[first cliArgs[`schemaDir]];
+{[x]
+    .log.info["Loading schemas from ",x];
+    system each "l ",/:1_/:string .Q.dd[sDir;] each key sDir:hsym `$x;
+    .log.info[("Successfully loaded schemas:\t %s"; tables[])];
+ }[first cliArgs[`schemaDir]];
+
+.log.info["Initialising tickerplant"];
 
 if[not system"p";system"p 5010"]
 
@@ -59,8 +64,9 @@ if[not system"t";system"t 1000";
 /.u.tick[src;.z.x 1];
 // x == tplog name prefix
 // y == tplog directory
-/TODO: logging + better tplog naming
+/TODO: better tplog naming
 .u.tick["testSchemaName"; first cliArgs[`tplogDir]];
+.log.info[("Tickerplant successfully initialised. Logging to:\t %r"; .u.L)]
 
 \
  globals used
