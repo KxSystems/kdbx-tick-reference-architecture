@@ -5,7 +5,7 @@ system"l utils/logging.q";
 // Parse command line arguments
 cliArgs:.Q.opt .z.x;
 
-.log.info["Initialising HDB."];
+.log.info["Initialising HDB"];
 
 // Load DB
 system"l ",first cliArgs[`hdbDir];

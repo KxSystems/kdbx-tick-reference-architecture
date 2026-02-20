@@ -5,6 +5,9 @@ system"l utils/logging.q";
 // Parse command line arguments
 cliArgs:.Q.opt .z.x;
 
+.log.info["Initialising GW"];
+
+.log.info[enlist["Connecting to DB processes on ports [RDB: %s] and [HDB: %s]"],raze cliArgs[`rdbPort`hdbPort]];
 rdbH:hopen`$"::",first cliArgs[`rdbPort];
 hdbH:hopen`$"::",first cliArgs[`hdbPort];
 
@@ -26,6 +29,8 @@ rdbREST:{
     rdbQuery . value x[`arg]
  };
 
+.log.info["Initialising REST server"];
+
 // REST server config
 .rest:use`kx.rest;
 // Init with autobind enabled
@@ -33,6 +38,28 @@ rdbREST:{
 
 // Register endpoints
 /TODO: investigate POST requests, json bodies
+
+// RDB Query
+.endpoints.rdb:(!). flip (
+    (`request; `get);
+    (`endpoint; "/rdb");
+    (`description; "Query data in the RDB");
+    (`qFunc; rdbREST);
+    (
+        `params; 
+        .rest.reg.data[`tab;-11h;1b;`trade;"Table to query"],
+        .rest.reg.data[`t1;-17h;0b;00:00;"Lower time bound"],
+        .rest.reg.data[`t2;-17h;0b;23:59;"Upper time bound"],
+        .rest.reg.data[`s;-11h;0b;`;"Sym to filter for"]
+    )
+ );
+
+.log.info["Registering endpoints:\t",.j.j value 1_.endpoints[;`endpoint]];
+.rest.register . value .endpoints.rdb;
+
+/TODO: log hostname to show full endpoint?
+.log.info[("Successfully initialised GW at port [%s]";`long$first system"p")];
+/
 .rest.register[`get;
     // Endpoint
     "/rdb";
