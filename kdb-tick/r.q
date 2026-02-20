@@ -3,6 +3,11 @@
 
 if[not "w"=first string .z.o;system "sleep 1"];
 
+// Initialise log library
+system"l utils/logging.q";
+.log.procStarted["RDB"];
+
+// Parse command line arguments
 cliArgs:.Q.opt .z.x;
 
 upd:insert;

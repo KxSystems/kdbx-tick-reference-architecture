@@ -41,8 +41,10 @@ q kdb-tick/r.q -p $RDB_PORT -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -tpPort :$TICK
 
 # HDB
 # q [hdb directory] -p [port number] < /dev/null > [log file] 2>&1 &
-#TODO: wait until rdb started before starting hdb (or atleast until directory exists)
-q $HDB_DIR -p $HDB_PORT -procName HDB < /dev/null > $PROCESS_LOG_DIR/hdb 2>&1 &
+# TODO: 
+# - wait until rdb started before starting hdb (or atleast until directory exists)
+# - use hdb.q script to add process logging/future analytics
+q kdb-tick/hdb.q -p $HDB_PORT -hdbDir $HDB_DIR -procName HDB < /dev/null > $PROCESS_LOG_DIR/hdb 2>&1 &
 
 # Gateway
-q gw.q -p $GW_PORT -rdbPort $RDB_PORT -hdbPort $HDB_PORT -procName GW
+q kdb-tick/gw.q -p $GW_PORT -rdbPort $RDB_PORT -hdbPort $HDB_PORT -procName GW

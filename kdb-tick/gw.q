@@ -1,3 +1,7 @@
+// Initialise log library
+system"l utils/logging.q";
+.log.procStarted["GW"];
+
 cliArgs:.Q.opt .z.x;
 
 rdbH:hopen`$"::",first cliArgs[`rdbPort];

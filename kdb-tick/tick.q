@@ -17,8 +17,13 @@
 /2005.11.28 zero-end-of-day
 /2005.10.28 allow`time on incoming
 /2005.10.10 zero latency
-"kdb+tick 2.8 2014.03.12"
+/"kdb+tick 2.8 2014.03.12"
 
+// Initialise log library
+system"l utils/logging.q";
+.log.procStarted["Tickerplant"];
+
+// Parse command line arguments
 cliArgs:.Q.opt .z.x;
 
 /q tick.q SRC [DST] [-p 5010] [-o h]
