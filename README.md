@@ -52,6 +52,12 @@ user      72687  0.0  0.0  86300  6016 pts/4    Sl+  15:55   0:00 q /path/to/dat
 user      72688  0.0  0.0 226456  9728 pts/4    Sl+  15:55   0:00 q gw.q -p 5013 -rdbPort 5011 -hdbPort 5012 <b>-procName GW</b>
 </pre>
 
+## Logging
+### Prerequisites
+The following modules are required to enable logging:
+* https://github.com/KxSystems/logging/tree/main
+* https://github.com/KxSystems/printf
+
 ## Appendix
 ### Directory Trees
 <details>
