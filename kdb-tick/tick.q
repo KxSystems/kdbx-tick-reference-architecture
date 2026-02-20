@@ -26,6 +26,8 @@ system"l utils/logging.q";
 // Parse command line arguments
 cliArgs:.Q.opt .z.x;
 
+.log.info["Initialising tickerplant"];
+
 /q tick.q SRC [DST] [-p 5010] [-o h]
 /system"l tick/",(src:first .z.x,enlist"sym"),".q"
 
@@ -36,7 +38,6 @@ cliArgs:.Q.opt .z.x;
     .log.info[("Successfully loaded schemas:\t %s"; tables[])];
  }[first cliArgs[`schemaDir]];
 
-.log.info["Initialising tickerplant"];
 
 if[not system"p";system"p 5010"]
 
