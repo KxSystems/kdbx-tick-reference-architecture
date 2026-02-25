@@ -3,7 +3,14 @@
 
 if[not "w"=first string .z.o;system "sleep 1"];
 
+// Initialise log library
+system"l utils/logging.q";
+.log.procStarted["RDB"];
+
+// Parse command line arguments
 cliArgs:.Q.opt .z.x;
+
+.log.info["Initialising RDB"];
 
 upd:insert;
 
@@ -21,8 +28,10 @@ upd:insert;
 /.u.rep:{(.[;();:;].)each x;if[null first y;:()];-11!y;system "cd ",1_-10_string first reverse y};
 / HARDCODE \cd if other than logdir/db
 // Custom DB location
+/TODO: logging for tplog replay
 .u.rep:{(.[;();:;].)each x;if[null first y;:()];-11!y;system "cd ",first cliArgs[`hdbDir]};
 
 / connect to ticker plant for (schema;(logcount;log))
 .u.rep .(hopen `$":",.u.x 0)"(.u.sub[`;`];`.u `i`L)";
 
+.log.info[("RDB successfully initialised. Connected to TP at port [%s] and HDB at location [%s]";1_.u.x[0];first system"pwd")];

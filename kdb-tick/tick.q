@@ -17,16 +17,27 @@
 /2005.11.28 zero-end-of-day
 /2005.10.28 allow`time on incoming
 /2005.10.10 zero latency
-"kdb+tick 2.8 2014.03.12"
+/"kdb+tick 2.8 2014.03.12"
 
+// Initialise log library
+system"l utils/logging.q";
+.log.procStarted["Tickerplant"];
+
+// Parse command line arguments
 cliArgs:.Q.opt .z.x;
+
+.log.info["Initialising tickerplant"];
 
 /q tick.q SRC [DST] [-p 5010] [-o h]
 /system"l tick/",(src:first .z.x,enlist"sym"),".q"
 
 // Load schemas
-/TODO: logging
-{system each "l ",/:1_/:string .Q.dd[sDir;] each key sDir:hsym `$x;}[first cliArgs[`schemaDir]];
+{[x]
+    .log.info["Loading schemas from ",x];
+    system each "l ",/:1_/:string .Q.dd[sDir;] each key sDir:hsym `$x;
+    .log.info[("Successfully loaded schemas:\t %s"; tables[])];
+ }[first cliArgs[`schemaDir]];
+
 
 if[not system"p";system"p 5010"]
 
@@ -54,8 +65,9 @@ if[not system"t";system"t 1000";
 /.u.tick[src;.z.x 1];
 // x == tplog name prefix
 // y == tplog directory
-/TODO: logging + better tplog naming
+/TODO: better tplog naming
 .u.tick["testSchemaName"; first cliArgs[`tplogDir]];
+.log.info[("Tickerplant successfully initialised. Logging to:\t %r"; .u.L)]
 
 \
  globals used
