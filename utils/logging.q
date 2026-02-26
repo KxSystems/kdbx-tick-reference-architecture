@@ -5,6 +5,8 @@
 // Add custom logic
 
 // Initialise the log file
+//  - proc == string to prepend to log file name
+//      .e.g "Tickerplant"
 .log.initFile:{[proc]
     // Define log file based on current time and sanitise file name
     timeStr:ssr[;;""]/[string .z.z;(".";":")];
@@ -15,6 +17,24 @@
     .log.remove[2;`error`fatal];
     // Open handle and add custom file to log sinks
     .log.fileHandle:hopen fp;
+    .log.add[.log.fileHandle;`trace`debug`info`warn`error`fatal];
+ };
+
+// Rollover the log file to a new date
+//  - proc == string to prepend to log file name
+//            .e.g "Tickerplant"
+//  - d    == date to set new log file name to
+//            .e.g .z.d+1
+.log.rollover:{[proc;d]
+    // Remove previous log file from sinks
+    .log.remove[.log.fileHandle;`trace`debug`info`warn`error`fatal];
+    // Close handle to previous file
+    hclose .log.fileHandle;
+    // Set new log file to be new day
+    timeStr:ssr[;;""]/[string `datetime$d;(".";":")];
+    fp:hsym `$getenv[`PROCESS_LOG_DIR],"/",proc,"_",timeStr,".log";
+    .log.fileHandle:hopen fp;
+    // Add new file to sinks
     .log.add[.log.fileHandle;`trace`debug`info`warn`error`fatal];
  };
 
