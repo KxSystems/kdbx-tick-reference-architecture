@@ -6,6 +6,6 @@ CLI_ARGS:.Q.opt .z.x;
 // Initialise log library
 {[x]
     system"l utils/logging.q";
-    .log.initFile[x];
     .log.procStarted[x];
+    .log.initFile[x];
  }[first CLI_ARGS[`procName]];
