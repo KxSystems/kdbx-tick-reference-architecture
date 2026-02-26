@@ -58,6 +58,25 @@ The following modules are required to enable logging:
 * https://github.com/KxSystems/logging/tree/main
 * https://github.com/KxSystems/printf
 
+### Usage
+Logging is enabled on scripts by loading the `utils/logging.q` script. This script initialises the logging module and contains additional custom logging logic.
+
+Default usage documentation can be found at https://github.com/KxSystems/logging/blob/main/docs/reference.md
+
+<details>
+<summary>Custom API Reference</summary>
+
+### .log.procStarted
+
+Used to show the q command that was run to start the current process, prepending the input string to the log line.
+```
+q) .log.procStarted["Tickerplant"];
+
+2026.02.26D11:35:29.519047911 info PID[<pid>] HOST[<hostname>] Tickerplant started using command:     q kdb-tick/tick.q -p 5010 -schemaDir /path/to/data/directory/schemas -tplogDir /path/to/data/directory/tplogs -procName TP
+```
+
+</details>
+
 ## Appendix
 ### Directory Trees
 <details>
