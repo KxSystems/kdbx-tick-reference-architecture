@@ -19,12 +19,16 @@
 /2005.10.10 zero latency
 /"kdb+tick 2.8 2014.03.12"
 
-// Initialise log library
-system"l utils/logging.q";
-.log.procStarted["Tickerplant"];
-
 // Parse command line arguments
 cliArgs:.Q.opt .z.x;
+
+// Initialise log library
+{[x]
+    system"l utils/logging.q";
+    .log.initFile[x];
+    .log.procStarted[x];
+ }[first cliArgs[`procName]];
+
 
 .log.info["Initialising tickerplant"];
 
