@@ -65,8 +65,7 @@ if[not system"t";system"t 1000";
 /.u.tick[src;.z.x 1];
 // x == tplog name prefix
 // y == tplog directory
-/TODO: better tplog naming
-.u.tick["testSchemaName"; first cliArgs[`tplogDir]];
+.u.tick[getenv[`TPLOG_NAME]; first cliArgs[`tplogDir]];
 .log.info[("Tickerplant successfully initialised. Logging to:\t %r"; .u.L)]
 
 \

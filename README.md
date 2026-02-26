@@ -10,6 +10,7 @@ The following configuration steps are required before being able to run the tick
     |-----------------|----------------------------------|----------------------------------------------------------------------------------------------------------------|
     | SCHEMA_DIR      | /path/to/data/directory/schemas  | A path to a directory which contains one or more .q files containg schemas of tables to be used by the system. |
     | TPLOG_DIR       | /path/to/data/directory/tplogs   | A path to a directory to store the tickerplant log files in.                                                   |
+    | TPLOG_NAME      | sampleSchema                     | String to prefix to the start of the TP log file.                                                 |
     | HDB_DIR         | /path/to/data/directory/hdb      | A path to a directory to store the data to on disk.                                                            |
     | PROCESS_LOG_DIR | /path/to/data/directory/proclogs | A path to a directory to store process logs in.                                                                |
     | TICK_PORT       | 5010                             | An available port to run the tickerplant process on.                                                           |
