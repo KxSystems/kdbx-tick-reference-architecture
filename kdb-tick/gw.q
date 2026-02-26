@@ -1,15 +1,12 @@
-// Initialise log library
-system"l utils/logging.q";
-.log.procStarted["GW"];
-
-// Parse command line arguments
-cliArgs:.Q.opt .z.x;
+// Load utility scripts
+system"l utils/main.q";
 
 .log.info["Initialising GW"];
 
-.log.info[enlist["Connecting to DB processes on ports [RDB: %s] and [HDB: %s]"],raze cliArgs[`rdbPort`hdbPort]];
-rdbH:hopen`$"::",first cliArgs[`rdbPort];
-hdbH:hopen`$"::",first cliArgs[`hdbPort];
+.log.info[enlist["Connecting to DB processes on ports [RDB: %s] and [HDB: %s]"],raze CLI_ARGS[`rdbPort`hdbPort]];
+/TODO global variable naming convention
+rdbH:hopen`$"::",first CLI_ARGS[`rdbPort];
+hdbH:hopen`$"::",first CLI_ARGS[`hdbPort];
 
 // set up .z.pg/.z.pp on rdb/hdb?
 
