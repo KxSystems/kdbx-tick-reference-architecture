@@ -18,5 +18,5 @@ weatherData:.load.data[50;`weather;"weather_data.csv"];
 //Publish data every second to TP
 system"t 1000"
 
-//To stop publishing  
+//Stop publishing  
 /system"t 0"
