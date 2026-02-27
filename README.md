@@ -27,7 +27,12 @@ Further examples can be found within the Appendix.
 To run the system simply run the startup script:
 ```
 $ cd x-starter
-$ ./startup.sh
+$ ./startup.sh 
+Starting processes on ports...
+  Started TP    [5010]
+  Started RDB   [5011]
+  Started HDB   [5012]
+  Started GW    [5013]
 ```
 This assumes the `.env` file is in the same directory as the `startup.sh` script. For a file stored in a different location use the `-e` flag:
 ```
@@ -39,7 +44,12 @@ $ ./startup.sh -e /path/to/.env
 To stop the system run the shutdown script:
 ```
 $ cd x-starter
-$ ./shutdown.sh
+$ ./shutdown.sh 
+Killed processes:
+  TP     [118666]
+  RDB    [118667]
+  HDB    [118668]
+  GW     [118669]
 ```
 
 ### Monitoring
@@ -74,6 +84,31 @@ Used to show the q command that was run to start the current process, prepending
 q) .log.procStarted["Tickerplant"];
 
 2026.02.26D11:35:29.519047911 info PID[<pid>] HOST[<hostname>] Tickerplant started using command:     q kdb-tick/tick.q -p 5010 -schemaDir /path/to/data/directory/schemas -tplogDir /path/to/data/directory/tplogs -procName TP
+```
+
+</details>
+
+### Default Behaviour
+By default the logging module will act in the following manner:
+* Process logs saved to the path defined by `PROCESS_LOG_DIR` in the `.env` file.
+* Log file names are in the format of `<procName>_<date>T<time>.log` where `procName` corresponds to the `-procName` flag value used in `startup.sh`.
+* A `startup.log` file is created to log events ran by `startup.sh`.
+* Logs use the `basic` format.
+* All log levels are redirected to the process log files (trace, debug, info, warn, error, fatal).
+
+<details>
+<summary>Example Process Log Directory</summary>
+
+```
+$ ll /path/to/data/directory/proclogs
+total 28
+drwxr-xr-x 2 gdanc gdanc 4096 Feb 26 18:36 ./
+drwxr-xr-x 6 gdanc gdanc 4096 Feb 18 15:42 ../
+-rw-r--r-- 1 gdanc gdanc  475 Feb 26 18:36 GW_20260226T183617776.log
+-rw-r--r-- 1 gdanc gdanc  262 Feb 26 18:36 HDB_20260226T183617776.log
+-rw-r--r-- 1 gdanc gdanc  268 Feb 26 18:36 RDB_20260226T183618778.log
+-rw-r--r-- 1 gdanc gdanc  519 Feb 26 18:36 TP_20260226T183617776.log
+-rw-r--r-- 1 gdanc gdanc  862 Feb 26 18:36 startup.log
 ```
 
 </details>
