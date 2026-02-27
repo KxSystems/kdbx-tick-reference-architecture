@@ -19,12 +19,8 @@
 /2005.10.10 zero latency
 /"kdb+tick 2.8 2014.03.12"
 
-// Initialise log library
-system"l utils/logging.q";
-.log.procStarted["Tickerplant"];
-
-// Parse command line arguments
-cliArgs:.Q.opt .z.x;
+// Load utility scripts
+system"l utils/main.q";
 
 .log.info["Initialising tickerplant"];
 
@@ -36,7 +32,7 @@ cliArgs:.Q.opt .z.x;
     .log.info["Loading schemas from ",x];
     system each "l ",/:1_/:string .Q.dd[sDir;] each key sDir:hsym `$x;
     .log.info[("Successfully loaded schemas:\t %s"; tables[])];
- }[first cliArgs[`schemaDir]];
+ }[first CLI_ARGS[`schemaDir]];
 
 
 if[not system"p";system"p 5010"]
@@ -65,8 +61,7 @@ if[not system"t";system"t 1000";
 /.u.tick[src;.z.x 1];
 // x == tplog name prefix
 // y == tplog directory
-/TODO: better tplog naming
-.u.tick["testSchemaName"; first cliArgs[`tplogDir]];
+.u.tick[getenv[`TPLOG_NAME]; first CLI_ARGS[`tplogDir]];
 .log.info[("Tickerplant successfully initialised. Logging to:\t %r"; .u.L)]
 
 \
