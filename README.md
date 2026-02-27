@@ -86,6 +86,13 @@ q) .log.procStarted["Tickerplant"];
 2026.02.26D11:35:29.519047911 info PID[<pid>] HOST[<hostname>] Tickerplant started using command:     q kdb-tick/tick.q -p 5010 -schemaDir /path/to/data/directory/schemas -tplogDir /path/to/data/directory/tplogs -procName TP
 ```
 
+### .log.rollover
+
+Used to roll the current processes log file to a new date.
+```
+q) .log.rollover["TP";.z.d+1];
+```
+
 </details>
 
 ### Default Behaviour
