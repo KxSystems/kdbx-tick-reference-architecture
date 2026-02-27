@@ -9,7 +9,7 @@ system"l parseCustomData.q";
 energyData:.load.data[50;`energy;"KwhConsumptionBlower78_1.csv"];
 weatherData:.load.data[50;`weather;"weather_data.csv"];
 
-//Live data stimulation of data
+//Live data stimulation
 .z.ts:{[] 
         neg[TP_H](".u.upd";`energy;energyData);
         neg[TP_H](".u.upd";`weather;weatherData)
