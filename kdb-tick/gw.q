@@ -4,9 +4,8 @@ system"l utils/main.q";
 .log.info["Initialising GW"];
 
 .log.info[enlist["Connecting to DB processes on ports [RDB: %s] and [HDB: %s]"],raze CLI_ARGS[`rdbPort`hdbPort]];
-/TODO global variable naming convention
-rdbH:hopen`$"::",first CLI_ARGS[`rdbPort];
-hdbH:hopen`$"::",first CLI_ARGS[`hdbPort];
+RDB_H:hopen`$"::",first CLI_ARGS[`rdbPort];
+HDB_H:hopen`$"::",first CLI_ARGS[`hdbPort];
 
 // set up .z.pg/.z.pp on rdb/hdb?
 
@@ -17,7 +16,7 @@ rdbQuery:{[tab;t1;t2;s]
     w:enlist (within;`time;(t1;t2));
     if[not null s;w:w,enlist (=;`sym;enlist s)];
     // IPC with parse tree
-    rdbH (?;tab;w;0b;())
+    RDB_H (?;tab;w;0b;())
  };
 
 // Wrapper of rdbQuery for REST endpoint
