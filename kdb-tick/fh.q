@@ -1,5 +1,10 @@
+// Load utility scripts
+system"l utils/main.q";
+
+.log.info["Initialising FH"];
+
 //Open connection to TP
-h:hopen 6010;
+TP_H:hopen`$"::",first CLI_ARGS[`tpPort];
 
 //Ingest data with custom logic
 system"l parseCustomData.q";
@@ -8,8 +13,8 @@ weatherData:.load.data[50;`weather;"weather_data.csv"];
 
 //Live data stimulation of data
 .z.ts:{[] 
-        neg[h](".u.upd";`energy;energyData);
-        neg[h](".u.upd";`weather;weatherData)
+        neg[TP_H](".u.upd";`energy;energyData);
+        neg[TP_H](".u.upd";`weather;weatherData)
     };
 
 //Publish data every second to TP

@@ -1,12 +1,12 @@
 //This script contains custom logic to parse in example data to the feedhandler
 
 //Get data directory
-sampleDataDir:getenv `SAMPLE_DATA;
+customDataDir:getenv `CUSTOM_DATA;
 
 //Ingest Energy data from csv file
 .parse.energy:{[csvFile]
         //Load CSV
-        energyRaw:("IDTF";enlist ",") 0: `$(sampleDataDir,"/",csvFile);
+        energyRaw:("IDTF";enlist ",") 0: `$(customDataDir,"/",csvFile);
         //Rename columns
         energyRaw:`idx`date`timeWindow`consumption xcol energyRaw;
         //Update to include time and sym columns
@@ -20,7 +20,7 @@ sampleDataDir:getenv `SAMPLE_DATA;
 //Ingest Weather data from csv file
 .parse.weather:{[csvFile]
         //Load CSV
-        weatherRaw:("SZFFFF";enlist ",") 0: `$(sampleDataDir,"/",csvFile);
+        weatherRaw:("SZFFFF";enlist ",") 0: `$(customDataDir,"/",csvFile);
         //Rename columns
         weatherRaw:`location`dateTime`temp`humidity`precipitation`windSpeed xcol weatherRaw;
         //Update to include time and sym columns
@@ -35,9 +35,9 @@ sampleDataDir:getenv `SAMPLE_DATA;
 .load.data:{[num;tabName;csvFile]
                 $[`energy=tabName; 
                         //Select custom number of rows from csv file
-                        tab:num#(select from .parse.energy[csvFile]);
+                        tab:num?(select from .parse.energy[csvFile]);
                     `weather=tabName;
-                        tab:num#(select from .parse.weather[csvFile]);
+                        tab:num?(select from .parse.weather[csvFile]);
                 ];    
                 //Return data in column list
                 tab[cols tab]
