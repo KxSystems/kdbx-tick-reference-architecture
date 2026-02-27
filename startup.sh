@@ -28,12 +28,12 @@ source $e_flag
 echo -e "Starting processes on ports..."
 
 # Tickerplant
-# q tick.q [schema file] [log directory] -p [port number] < /dev/null > [log file] 2>&1 &
+# q tick.q -p [port number] -schemaDir [schema directory] -tplogDir [log directory] -procName [process name] < /dev/null >> [log file] 2>&1 &
 q kdb-tick/tick.q -p $TICK_PORT -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR -procName TP < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started TP\t[$TICK_PORT]"
 
 # RDB
-# q tick/r.q [:tp port number] -p [port number] < /dev/null > [log file] 2>&1 &
+# q r.q -p [port number] -tplogDir [log directory] -hdbDir [hdb directory] -tpPort [:tp port number] -hdbPort [:hdb port number] -procName [process name] < /dev/null >> [log file] 2>&1 &
 q kdb-tick/r.q -p $RDB_PORT -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -tpPort :$TICK_PORT -hdbPort :$HDB_PORT -procName RDB < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started RDB\t[$RDB_PORT]"
 
@@ -41,7 +41,7 @@ echo -e "  Started RDB\t[$RDB_PORT]"
 # symbol selection example
 
 # HDB
-# q [hdb directory] -p [port number] < /dev/null > [log file] 2>&1 &
+# q hdb.q -p [port number] -hdbDir [hdb directory] -procName [process name] < /dev/null >> [log file] 2>&1 &
 # TODO: 
 # - wait until rdb started before starting hdb (or atleast until directory exists)
 # - use hdb.q script to add process logging/future analytics
@@ -49,5 +49,6 @@ q kdb-tick/hdb.q -p $HDB_PORT -hdbDir $HDB_DIR -procName HDB < /dev/null >> $PRO
 echo -e "  Started HDB\t[$HDB_PORT]"
 
 # Gateway
-q kdb-tick/gw.q -p $GW_PORT -rdbPort $RDB_PORT -hdbPort $HDB_PORT -procName GW < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+# q gw.q -p [port number] -analyticsDir [analytics directory] -rdbPort [rdb port] -hdbPort [hdb port] -proceName [process name] < /dev/null >> [log file] 2>&1 &
+q kdb-tick/gw.q -p $GW_PORT -analyticsDir $ANALYTIC_DIR -rdbPort $RDB_PORT -hdbPort $HDB_PORT -procName GW < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started GW\t[$GW_PORT]"
