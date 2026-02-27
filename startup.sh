@@ -48,6 +48,11 @@ echo -e "  Started RDB\t[$RDB_PORT]"
 q kdb-tick/hdb.q -p $HDB_PORT -hdbDir $HDB_DIR -procName HDB < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started HDB\t[$HDB_PORT]"
 
+# Feedhandler
+# q [feedhandler initfile] -p [port number] < /dev/null > [log file] 2>&1 &
+q kdb-tick/fh.q -p $FH_PORT -tpPort $TICK_PORT -procName FH < /dev/null >> $PROCESS_LOG_DIR/fh 2>&1 &
+echo -e "  Started FH\t[$FH_PORT]"
+
 # Gateway
 q kdb-tick/gw.q -p $GW_PORT -rdbPort $RDB_PORT -hdbPort $HDB_PORT -procName GW < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started GW\t[$GW_PORT]"
