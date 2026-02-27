@@ -3,12 +3,8 @@
 
 if[not "w"=first string .z.o;system "sleep 1"];
 
-// Initialise log library
-system"l utils/logging.q";
-.log.procStarted["RDB"];
-
-// Parse command line arguments
-cliArgs:.Q.opt .z.x;
+// Load utility scripts
+system"l utils/main.q";
 
 .log.info["Initialising RDB"];
 
@@ -19,7 +15,7 @@ upd:insert;
 // 0 == tp port
 // 1 == hdb port
 /TODO: logging/defaults
-.u.x:raze cliArgs[`tpPort`hdbPort];
+.u.x:raze CLI_ARGS[`tpPort`hdbPort];
 
 / end of day: save, clear, hdb reload
 .u.end:{t:tables`.;t@:where `g=attr each t@\:`sym;.Q.hdpf[`$":",.u.x 1;`:.;x;`sym];@[;`sym;`g#] each t;};
@@ -29,7 +25,7 @@ upd:insert;
 / HARDCODE \cd if other than logdir/db
 // Custom DB location
 /TODO: logging for tplog replay
-.u.rep:{(.[;();:;].)each x;if[null first y;:()];-11!y;system "cd ",first cliArgs[`hdbDir]};
+.u.rep:{(.[;();:;].)each x;if[null first y;:()];-11!y;system "cd ",first CLI_ARGS[`hdbDir]};
 
 / connect to ticker plant for (schema;(logcount;log))
 .u.rep .(hopen `$":",.u.x 0)"(.u.sub[`;`];`.u `i`L)";

@@ -10,6 +10,7 @@ The following configuration steps are required before being able to run the tick
     |-----------------|----------------------------------|----------------------------------------------------------------------------------------------------------------|
     | SCHEMA_DIR      | /path/to/data/directory/schemas  | A path to a directory which contains one or more .q files containg schemas of tables to be used by the system. |
     | TPLOG_DIR       | /path/to/data/directory/tplogs   | A path to a directory to store the tickerplant log files in.                                                   |
+    | TPLOG_NAME      | sampleSchema                     | String to prefix to the start of the TP log file.                                                 |
     | HDB_DIR         | /path/to/data/directory/hdb      | A path to a directory to store the data to on disk.                                                            |
     | PROCESS_LOG_DIR | /path/to/data/directory/proclogs | A path to a directory to store process logs in.                                                                |
     | TICK_PORT       | 5010                             | An available port to run the tickerplant process on.                                                           |
@@ -26,7 +27,12 @@ Further examples can be found within the Appendix.
 To run the system simply run the startup script:
 ```
 $ cd x-starter
-$ ./startup.sh
+$ ./startup.sh 
+Starting processes on ports...
+  Started TP    [5010]
+  Started RDB   [5011]
+  Started HDB   [5012]
+  Started GW    [5013]
 ```
 This assumes the `.env` file is in the same directory as the `startup.sh` script. For a file stored in a different location use the `-e` flag:
 ```
@@ -38,7 +44,12 @@ $ ./startup.sh -e /path/to/.env
 To stop the system run the shutdown script:
 ```
 $ cd x-starter
-$ ./shutdown.sh
+$ ./shutdown.sh 
+Killed processes:
+  TP     [118666]
+  RDB    [118667]
+  HDB    [118668]
+  GW     [118669]
 ```
 
 ### Monitoring
@@ -57,6 +68,57 @@ user      72688  0.0  0.0 226456  9728 pts/4    Sl+  15:55   0:00 q gw.q -p 5013
 The following modules are required to enable logging:
 * https://github.com/KxSystems/logging/tree/main
 * https://github.com/KxSystems/printf
+
+### Usage
+Logging is enabled on scripts by loading the `utils/logging.q` script. This script initialises the logging module and contains additional custom logging logic.
+
+Default usage documentation can be found at https://github.com/KxSystems/logging/blob/main/docs/reference.md
+
+<details>
+<summary>Custom API Reference</summary>
+
+### .log.procStarted
+
+Used to show the q command that was run to start the current process, prepending the input string to the log line.
+```
+q) .log.procStarted["Tickerplant"];
+
+2026.02.26D11:35:29.519047911 info PID[<pid>] HOST[<hostname>] Tickerplant started using command:     q kdb-tick/tick.q -p 5010 -schemaDir /path/to/data/directory/schemas -tplogDir /path/to/data/directory/tplogs -procName TP
+```
+
+### .log.rollover
+
+Used to roll the current processes log file to a new date.
+```
+q) .log.rollover["TP";.z.d+1];
+```
+
+</details>
+
+### Default Behaviour
+By default the logging module will act in the following manner:
+* Process logs saved to the path defined by `PROCESS_LOG_DIR` in the `.env` file.
+* Log file names are in the format of `<procName>_<date>T<time>.log` where `procName` corresponds to the `-procName` flag value used in `startup.sh`.
+* A `startup.log` file is created to log events ran by `startup.sh`.
+* Logs use the `basic` format.
+* All log levels are redirected to the process log files (trace, debug, info, warn, error, fatal).
+
+<details>
+<summary>Example Process Log Directory</summary>
+
+```
+$ ll /path/to/data/directory/proclogs
+total 28
+drwxr-xr-x 2 gdanc gdanc 4096 Feb 26 18:36 ./
+drwxr-xr-x 6 gdanc gdanc 4096 Feb 18 15:42 ../
+-rw-r--r-- 1 gdanc gdanc  475 Feb 26 18:36 GW_20260226T183617776.log
+-rw-r--r-- 1 gdanc gdanc  262 Feb 26 18:36 HDB_20260226T183617776.log
+-rw-r--r-- 1 gdanc gdanc  268 Feb 26 18:36 RDB_20260226T183618778.log
+-rw-r--r-- 1 gdanc gdanc  519 Feb 26 18:36 TP_20260226T183617776.log
+-rw-r--r-- 1 gdanc gdanc  862 Feb 26 18:36 startup.log
+```
+
+</details>
 
 ## Appendix
 ### Directory Trees
