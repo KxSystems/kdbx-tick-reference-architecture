@@ -3,8 +3,6 @@ h:hopen 6010;
 
 //Ingest data with custom logic
 system"l parseCustomData.q";
-
-// 
 energyData:.load.data[50;`energy;"KwhConsumptionBlower78_1.csv"];
 weatherData:.load.data[50;`weather;"weather_data.csv"];
 
