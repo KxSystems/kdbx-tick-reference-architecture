@@ -19,6 +19,7 @@ The following configuration steps are required before being able to run the tick
     | HDB_PORT        | 5012                             | An available port to run the historical database process on.                                                   |
     | GW_PORT         | 5013                             | An available port to run the gateway process on.                                                               |
     | FH_PORT         | 5014                             | An available port to run the feedhandler process on.  
+    | ANALYTIC_DIR    | /path/to/repo/x-starter/samples/analytics                             | A path to a directory which contains one or more .q files containing to use on the gateway as REST endpoints.                                                               |
 * Create a `.q` file in `SCHEMA_DIR` containing schemas of tables to be used by the system. Multiple schema files can be used.
 * Create the `TPLOG_DIR`, `HDB_DIR`, and `PROCESS_LOG_DIR` directories.
 * Ensure the `startup.sh` and `shutdown.sh` scripts are executable.
@@ -64,6 +65,96 @@ user      72686  0.0  0.0  86164  6144 pts/4    Sl+  15:55   0:00 q kdb-tick/r.q
 user      72687  0.0  0.0  86300  6016 pts/4    Sl+  15:55   0:00 q /path/to/data/directory/hdb -p 5012 <b>-procName HDB</b>
 user      72688  0.0  0.0 226456  9728 pts/4    Sl+  15:55   0:00 q gw.q -p 5013 -rdbPort 5011 -hdbPort 5012 <b>-procName GW</b>
 </pre>
+
+### Querying
+The gateway process takes advantage of the [REST module in KDB-X](https://code.kx.com/kdb-x/modules/rest-server/overview.html) to act as a REST server. To access the data in the system there are some default REST API endpoints available, `localhost:GW_PORT/rdb` and `localhost:GW_PORT/HDB`.
+
+<details>
+<summary>REST API Reference</summary>
+
+### /rdb
+Query data within the RDB, filtering on the `time` and `sym` columns.
+
+Input parameters:
+| Parameter | Required | Data Type     | Default Value | Description                                                 |
+|-----------|----------|---------------|---------------|-------------------------------------------------------------|
+| tab       | Yes      | Symbol (-11h) | trade         | Table to query.                                             |
+| t1        | No       | Minute (-17h) | 00:00         | Lower time bound.                                           |
+| t2        | No       | Minute (-17h) | 23:59         | Upper time bound.                                           |
+| s         | No       | Symbol (-11h) | `             | Sym to filter for. No value defaults to returning all syms. |
+
+Example Usage
+```
+$ curl 'localhost:<GW_PORT>/rdb'
+{"code":"400","text":"missing","details":"tab"}
+
+$ curl 'localhost:<GW_PORT>/rdb?tab=trade'
+<json object of all trade data in rdb>
+
+$ curl 'localhost:<GW_PORT>/rdb?tab=trade&t1=15:34&t2=15:35'
+<json object of trade data in rdb within 15:34 and 15:35>
+
+$ curl 'localhost:<GW_PORT>/rdb?tab=trade&t1=15:34&t2=15:35&s=MSFT'
+<json object of trade data in rdb within 15:34 and 15:35 matching sym=`MSFT>
+```
+
+### /hdb
+Query data within the HDB, filtering on the `date`, `time`, and `sym` columns.
+
+Input parameters:
+| Parameter | Required | Data Type     | Default Value | Description                                                 |
+|-----------|----------|---------------|---------------|-------------------------------------------------------------|
+| tab       | Yes      | Symbol (-11h) | trade         | Table to query.                                             |
+| d         | No       | Date (-14h)   | .z.d-1        | Date to query.                                              |
+| t1        | No       | Minute (-17h) | 00:00         | Lower time bound.                                           |
+| t2        | No       | Minute (-17h) | 23:59         | Upper time bound.                                           |
+| s         | No       | Symbol (-11h) | `             | Sym to filter for. No value defaults to returning all syms. |
+
+Example Usage
+```
+$ curl 'localhost:<GW_PORT>/hdb'
+{"code":"400","text":"missing","details":"tab"}
+
+$ curl 'localhost:<GW_PORT>/hdb?tab=trade'
+<json object of all yesterdays trade data in hdb>
+
+$ curl 'localhost:<GW_PORT>/hdb?tab=trade&d=2026.02.18&t1=15:34&t2=15:35'
+<json object of trade data in hdb on 18th Feb 2026 within 15:34 and 15:35>
+
+$ curl 'localhost:<GW_PORT>/hdb?tab=trade&d=2026.02.18&t1=15:34&t2=15:35&s=MSFT'
+<json object of trade data in hdb on 18th Feb 2026 within 15:34 and 15:35 matching sym=`MSFT>
+```
+</details>
+
+#### Adding Endpoints
+Custom analytics can be added and exposed as REST endpoints by creating `.q` scripts in the directory set by the `ANALYTIC_DIR` environmental variable. This works through use of the [.rest.register](https://code.kx.com/kdb-x/modules/rest-server/reference.html#restregister) API, which will be applied to the contents of the `.endpoints` namespace, e.g., `.endpoints.rdb` and `.endpoints.hdb`.
+
+Therefore to expose a new endpoint, simply add a new variable to the namespace which follows the formatting of the `.endpoints` namespace.
+
+<details>
+<summary>.endpoints Namespace Format</summary>
+
+```
+.endpoints.newEndpoint:(!). flip (
+    (`request; `get);
+    (`endpoint; "/endpointPath");
+    (`description; "Description of endpoint");
+    (`qFunc; qHandlerFunction);
+    (
+        `params; 
+        .rest.reg.data[`paramName1;paramType;requiredFlag;defaultVal;"description"],
+        ... ,
+        .rest.reg.data[`paramNameN;paramType;requiredFlag;defaultVal;"description"]
+    )
+ );
+```
+where `qHandlerFunction` is the q function to run on the given input parameters:
+```
+qHandlerFunction:{[paramName1;...;paramNameN]
+    q query logic
+};
+```
+</details>
 
 ## Logging
 ### Prerequisites
