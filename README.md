@@ -9,6 +9,7 @@ The following configuration steps are required before being able to run the tick
     | Variable        | Example Value                    | Description                                                                                                    |
     |-----------------|----------------------------------|----------------------------------------------------------------------------------------------------------------|
     | SCHEMA_DIR      | /path/to/data/directory/schemas  | A path to a directory which contains one or more .q files containg schemas of tables to be used by the system. |
+    | CUSTOM_DATA      | /path/to/data/directory/data  | A path to a directory which contains the raw data to be ingested by the system. |
     | TPLOG_DIR       | /path/to/data/directory/tplogs   | A path to a directory to store the tickerplant log files in.                                                   |
     | TPLOG_NAME      | sampleSchema                     | String to prefix to the start of the TP log file.                                                 |
     | HDB_DIR         | /path/to/data/directory/hdb      | A path to a directory to store the data to on disk.                                                            |
@@ -17,6 +18,7 @@ The following configuration steps are required before being able to run the tick
     | RDB_PORT        | 5011                             | An available port to run the realtime database process on.                                                     |
     | HDB_PORT        | 5012                             | An available port to run the historical database process on.                                                   |
     | GW_PORT         | 5013                             | An available port to run the gateway process on.                                                               |
+    | FH_PORT         | 5014                             | An available port to run the feedhandler process on.  
 * Create a `.q` file in `SCHEMA_DIR` containing schemas of tables to be used by the system. Multiple schema files can be used.
 * Create the `TPLOG_DIR`, `HDB_DIR`, and `PROCESS_LOG_DIR` directories.
 * Ensure the `startup.sh` and `shutdown.sh` scripts are executable.
