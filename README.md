@@ -63,6 +63,66 @@ user      72687  0.0  0.0  86300  6016 pts/4    Sl+  15:55   0:00 q /path/to/dat
 user      72688  0.0  0.0 226456  9728 pts/4    Sl+  15:55   0:00 q gw.q -p 5013 -rdbPort 5011 -hdbPort 5012 <b>-procName GW</b>
 </pre>
 
+### Querying
+To access the data in the system there are some default REST API endpoints available, `localhost:GW_PORT/rdb` and `localhost:GW_PORT/HDB`.
+
+<details>
+<summary>REST API Reference</summary>
+
+### /rdb
+Query data within the RDB.
+
+Input parameters:
+| Parameter | Required | Data Type     | Default Value | Description                                                 |
+|-----------|----------|---------------|---------------|-------------------------------------------------------------|
+| tab       | Yes      | Symbol (-11h) | trade         | Table to query.                                             |
+| t1        | No       | Minute (-17h) | 00:00         | Lower time bound.                                           |
+| t2        | No       | Minute (-17h) | 23:59         | Upper time bound.                                           |
+| s         | No       | Symbol (-11h) | `             | Sym to filter for. No value defaults to returning all syms. |
+
+Example Usage
+```
+$ curl 'localhost:<GW_PORT>/rdb'
+{"code":"400","text":"missing","details":"tab"}
+
+$ curl 'localhost:<GW_PORT>/rdb?tab=trade'
+<json object of all trade data in rdb>
+
+$ curl 'localhost:<GW_PORT>/rdb?tab=trade&t1=15:34&t2=15:35'
+<json object of trade data in rdb within 15:34 and 15:35>
+
+$ curl 'localhost:<GW_PORT>/rdb?tab=trade&t1=15:34&t2=15:35&s=MSFT'
+<json object of trade data in rdb within 15:34 and 15:35 matching sym=`MSFT>
+```
+
+### /hdb
+Query data within the HDB.
+
+Input parameters:
+| Parameter | Required | Data Type     | Default Value | Description                                                 |
+|-----------|----------|---------------|---------------|-------------------------------------------------------------|
+| tab       | Yes      | Symbol (-11h) | trade         | Table to query.                                             |
+| d         | No       | Date (-14h)   | .z.d-1        | Date to query.                                              |
+| t1        | No       | Minute (-17h) | 00:00         | Lower time bound.                                           |
+| t2        | No       | Minute (-17h) | 23:59         | Upper time bound.                                           |
+| s         | No       | Symbol (-11h) | `             | Sym to filter for. No value defaults to returning all syms. |
+
+Example Usage
+```
+$ curl 'localhost:<GW_PORT>/hdb'
+{"code":"400","text":"missing","details":"tab"}
+
+$ curl 'localhost:<GW_PORT>/hdb?tab=trade'
+<json object of all yesterdays trade data in hdb>
+
+$ curl 'localhost:<GW_PORT>/hdb?tab=trade&d=2026.02.18&t1=15:34&t2=15:35'
+<json object of trade data in hdb on 18th Feb 2026 within 15:34 and 15:35>
+
+$ curl 'localhost:<GW_PORT>/hdb?tab=trade&d=2026.02.18&t1=15:34&t2=15:35&s=MSFT'
+<json object of trade data in hdb on 18th Feb 2026 within 15:34 and 15:35 matching sym=`MSFT>
+```
+</details>
+
 ## Logging
 ### Prerequisites
 The following modules are required to enable logging:
