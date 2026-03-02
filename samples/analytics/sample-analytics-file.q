@@ -7,7 +7,7 @@ rdbQuery:{[tab;t1;t2;s]
     if[not null s;w:w,enlist (=;`sym;enlist s)];
     // IPC with parse tree
     h:first exec 1?handle from CONNECTIONS where proc like "RDB_*";
-    show h`pn;
+    /show h`pn;
     h (?;tab;w;0b;())
  };
 
