@@ -24,7 +24,7 @@ CONNECTIONS:([]proc:`$();handle:`int$());
 {[str;ports]
     c:count h:`$"::",/:"," vs ports;
     `CONNECTIONS upsert (`$str,/:string 1+til[c]),'hopen each h;
-    }./:(enlist"RDB_";enlist"HDB_"),'CLI_ARGS[`rdbPort`hdbPort]
+    }./:(enlist"RDB_";enlist"HDB_"),'CLI_ARGS[`rdbPort`hdbPort];
 /
 // REST server config
 .log.info["Initialising REST server"];
