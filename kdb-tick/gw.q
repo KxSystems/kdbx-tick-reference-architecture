@@ -4,7 +4,7 @@ system"l utils/main.q";
 .log.info["Initialising GW"];
 
 // Open DB connections
-.log.info[enlist["Connecting to DB processes on ports [RDB: %s] and [HDB: %s]"],raze CLI_ARGS[`rdbPort`hdbPort]];
+.log.info[enlist["Connecting to DB processes on ports [RDB: %s] and [HDB: %s]"],CLI_ARGS[`rdbPort`hdbPort]];
 /RDB_H:hopen`$"::",first CLI_ARGS[`rdbPort];
 HDB_H:hopen`$"::",first CLI_ARGS[`hdbPort];
 // Initialise DB connections in a table
@@ -22,10 +22,10 @@ CONNECTIONS:([]proc:`$();handle:`int$());
  }[first CLI_ARGS[`hdbPort]];
 \
 {[str;ports]
-    c:count h:`$"::",/:"," vs ports;
+    c:count h:`$"::",/: ports;
     `CONNECTIONS upsert (`$str,/:string 1+til[c]),'hopen each h;
-    }./:(enlist"RDB_";enlist"HDB_"),'CLI_ARGS[`rdbPort`hdbPort];
-/
+    }./:(enlist"RDB_";enlist"HDB_"),'enlist each CLI_ARGS[`rdbPort`hdbPort];
+
 // REST server config
 .log.info["Initialising REST server"];
 .rest:use`kx.rest;

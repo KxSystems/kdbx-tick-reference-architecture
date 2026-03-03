@@ -6,7 +6,9 @@ hdbQuery:{[tab;d;t1;t2;s]
     w:((=;`date;d);(within;`time;(t1;t2)));
     if[not null s;w:w,enlist (=;`sym;enlist s)];
     // IPC with parse tree
-    HDB_H (?;tab;w;0b;())
+    h:first exec 1?handle from CONNECTIONS where proc like "HDB_*";
+    /show h "CLI_ARGS[`procName]";
+    h (?;tab;w;0b;())
  };
 
 // Wrapper of hdbQuery for REST endpoint
