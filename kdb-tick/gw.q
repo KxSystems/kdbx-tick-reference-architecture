@@ -3,10 +3,19 @@ system"l utils/main.q";
 
 .log.info["Initialising GW"];
 
-// Open DB connections
-.log.info[enlist["Connecting to DB processes on ports [RDB: %s] and [HDB: %s]"],raze CLI_ARGS[`rdbPort`hdbPort]];
-RDB_H:hopen`$"::",first CLI_ARGS[`rdbPort];
-HDB_H:hopen`$"::",first CLI_ARGS[`hdbPort];
+// Identify whether to connect to main or chained RDBs
+RDB_PORTS:$[()~CLI_ARGS[`crdbPort];
+    CLI_ARGS[`rdbPort];
+    CLI_ARGS[`crdbPort]
+ ];
+
+// Initialise DB connections in a table
+.log.info[enlist["Connecting to DB processes on ports [RDB: %s] and [HDB: %s]"],(RDB_PORTS;CLI_ARGS[`hdbPort])];
+CONNECTIONS:([]proc:`$();handle:`int$());
+{[str;ports]
+    c:count h:`$"::",/: ports;
+    `CONNECTIONS upsert (`$str,/:string 1+til[c]),'hopen each h;
+ }./:(enlist"RDB_";enlist"HDB_"),'enlist each (RDB_PORTS;CLI_ARGS[`hdbPort]);
 
 // REST server config
 .log.info["Initialising REST server"];

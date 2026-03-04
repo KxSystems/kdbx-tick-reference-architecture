@@ -6,7 +6,9 @@ rdbQuery:{[tab;t1;t2;s]
     w:enlist (within;`time;(t1;t2));
     if[not null s;w:w,enlist (=;`sym;enlist s)];
     // IPC with parse tree
-    RDB_H (?;tab;w;0b;())
+    h:first exec 1?handle from CONNECTIONS where proc like "RDB_*";
+    /show h "CLI_ARGS[`procName]";
+    h (?;tab;w;0b;())
  };
 
 // Wrapper of rdbQuery for REST endpoint

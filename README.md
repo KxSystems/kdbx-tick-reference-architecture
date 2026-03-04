@@ -20,6 +20,7 @@ The following configuration steps are required before being able to run the tick
     | GW_PORT         | 5013                             | An available port to run the gateway process on.                                                               |
     | FH_PORT         | 5014                             | An available port to run the feedhandler process on.  
     | ANALYTIC_DIR    | /path/to/repo/x-starter/samples/analytics                             | A path to a directory which contains one or more .q files containing to use on the gateway as REST endpoints.                                                               |
+    | PARALLEL_PORT_RANGE_START    | 5020                             | The starting port value for creating additional parallel processes.                                                               |
 * Create a `.q` file in `SCHEMA_DIR` containing schemas of tables to be used by the system. Multiple schema files can be used.
 * Create the `TPLOG_DIR`, `HDB_DIR`, and `PROCESS_LOG_DIR` directories.
 * Ensure the `startup.sh` and `shutdown.sh` scripts are executable.
@@ -42,6 +43,38 @@ This assumes the `.env` file is in the same directory as the `startup.sh` script
 $ cd x-starter
 $ ./startup.sh -e /path/to/.env
 ```
+
+<details>
+<summary>Additional Optional Flags</summary>
+
+* **-s**
+
+    Number of secondary threads to make available for each process.
+
+    Defaults to 0.
+
+    Reference: https://code.kx.com/q/basics/cmdline/#-s-secondary-threads
+
+    ```
+    $ cd x-starter
+    $ ./startup.sh -s 4
+    ```
+
+* **-m**
+
+    Number of additional RDB and HDB processes to start in parallel. Additional RDBs are started as "chained" which do not carry out any end of day saves or HDB reloads.
+
+    Defaults to 0.
+
+    Reference: https://code.kx.com/q/kb/kdb-tick/#chained-rdbs
+
+    ```
+    $ cd x-starter
+    $ ./startup.sh -m 2
+    ```
+
+</details>
+
 
 ### Stop
 To stop the system run the shutdown script:
