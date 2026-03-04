@@ -36,8 +36,8 @@ for ((i=$PARALLEL_PORT_RANGE_START; i<=HDB_PORT_END; i++)); do
     HDB_PORTS+=("$i")
 done
 
-echo -e "Parsed command line arguments as:\n  .env file: [$e_flag] \n  parallel processes: [$m_flag] \n  secondaries: [$s_flag]"
-printf "  HDB ports set as: [${HDB_PORTS[*]}]\n"
+echo -e "Parsed command line arguments as:\n  .env file: [$e_flag] \n  Secondaries: [$s_flag] \n  Parallel processes: [$m_flag]"
+printf "  HDB port(s) set as: [${HDB_PORTS[*]}]\n"
 
 # Start from end of previous range
 #RDB_PORT_END=$(( HDB_PORT_END + m_flag ))
