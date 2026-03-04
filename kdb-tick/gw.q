@@ -3,28 +3,22 @@ system"l utils/main.q";
 
 .log.info["Initialising GW"];
 
+// Identify whether to connect to main or chained RDBs
+RDB_PORTS:$[()~CLI_ARGS[`crdbPort];
+    CLI_ARGS[`rdbPort];
+    CLI_ARGS[`crdbPort]
+ ];
+
 // Open DB connections
-.log.info[enlist["Connecting to DB processes on ports [RDB: %s] and [HDB: %s]"],CLI_ARGS[`rdbPort`hdbPort]];
+.log.info[enlist["Connecting to DB processes on ports [RDB: %s] and [HDB: %s]"],(RDB_PORTS;CLI_ARGS[`hdbPort])];
 /RDB_H:hopen`$"::",first CLI_ARGS[`rdbPort];
-HDB_H:hopen`$"::",first CLI_ARGS[`hdbPort];
+/HDB_H:hopen`$"::",first CLI_ARGS[`hdbPort];
 // Initialise DB connections in a table
 CONNECTIONS:([]proc:`$();handle:`int$());
-// Add RDB connections
-/
-{
-    c:count h:`$"::",/:"," vs x;
-    `CONNECTIONS upsert (`$"RDB_",/:string 1+til[c]),'hopen each h;
- }[first CLI_ARGS[`rdbPort]];
-// Add HDB connections
-{
-    c:count h:`$"::",/:"," vs x;
-    `CONNECTIONS upsert (`$"HDB_",/:string 1+til[c]),'hopen each h;
- }[first CLI_ARGS[`hdbPort]];
-\
 {[str;ports]
     c:count h:`$"::",/: ports;
     `CONNECTIONS upsert (`$str,/:string 1+til[c]),'hopen each h;
-    }./:(enlist"RDB_";enlist"HDB_"),'enlist each CLI_ARGS[`rdbPort`hdbPort];
+ }./:(enlist"RDB_";enlist"HDB_"),'enlist each (RDB_PORTS;CLI_ARGS[`hdbPort]);
 
 // REST server config
 .log.info["Initialising REST server"];

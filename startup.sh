@@ -85,6 +85,6 @@ q kdb-tick/fh.q -p $FH_PORT -s $s_flag -tpPort $TICK_PORT -procName FH < /dev/nu
 echo -e "  Started FH\t\t[$FH_PORT]"
 
 # Gateway
-# q gw.q -p [port number] -analyticsDir [analytics directory] -rdbPort [rdb port] -hdbPort [hdb port] -procName [process name] < /dev/null >> [log file] 2>&1 &
-q kdb-tick/gw.q -p $GW_PORT -s $s_flag -analyticsDir $ANALYTIC_DIR -rdbPort $RDB_PORT -hdbPort ${HDB_PORTS[*]} -procName GW < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+# q gw.q -p [port number] -analyticsDir [analytics directory] -rdbPort [rdb port] -crdbPort [list of chained rdb ports] -hdbPort [hdb port] -procName [process name] < /dev/null >> [log file] 2>&1 &
+q kdb-tick/gw.q -p $GW_PORT -s $s_flag -analyticsDir $ANALYTIC_DIR -rdbPort $RDB_PORT -crdbPort ${CHAINED_RDB_PORTS[*]} -hdbPort ${HDB_PORTS[*]} -procName GW < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started GW\t\t[$GW_PORT]"
