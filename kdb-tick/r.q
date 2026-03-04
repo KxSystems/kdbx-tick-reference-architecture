@@ -8,6 +8,8 @@ system"l utils/main.q";
 
 .log.info["Initialising RDB"];
 
+MAIN_FLAG:"RDB_MAIN"~first CLI_ARGS[`procName];
+
 upd:insert;
 
 / get the ticker plant and history ports, defaults are 5010,5012
@@ -21,10 +23,20 @@ upd:insert;
 
 / end of day: save, clear, hdb reload
 /.u.end:{t:tables`.;t@:where `g=attr each t@\:`sym;.Q.hdpf[`$":",.u.x 1;`:.;x;`sym];@[;`sym;`g#] each t;};
+// Only save/reload if main RDB
 .u.end:{
-    t:tables`.;t@:where `g=attr each t@\:`sym;.Q.hdpf[`$":",.u.x 1;`:.;x;`sym];@[;`sym;`g#] each t;
-    // Reload additional HDBs
-    @[;"system \"l .\"";{x}] each `$"::",/:1_CLI_ARGS[`hdbPort]
+    .log.info["Running .u.end"];
+    t:tables`.;t@:where `g=attr each t@\:`sym;
+    $[MAIN_FLAG;
+        [
+            .log.info["Running EOD Save"];
+            .Q.hdpf[`$":",.u.x 1;`:.;x;`sym];
+            @[;`sym;`g#] each t;
+            // Reload additional HDBs
+            @[;"system \"l .\"";{x}] each `$"::",/:1_CLI_ARGS[`hdbPort]
+        ];
+        @[`.;t;@[;`sym;`g#]0#]
+    ];
  };
 
 / init schema and sync up from log file;cd to hdb(so client save can run)
@@ -32,7 +44,7 @@ upd:insert;
 / HARDCODE \cd if other than logdir/db
 // Custom DB location
 /TODO: logging for tplog replay
-.u.rep:{(.[;();:;].)each x;if[null first y;:()];-11!y;system "cd ",first CLI_ARGS[`hdbDir]};
+.u.rep:{(.[;();:;].)each x;if[null first y;:()];-11!y;if[MAIN_FLAG;system "cd ",first CLI_ARGS[`hdbDir]]};
 
 / connect to ticker plant for (schema;(logcount;log))
 .u.rep .(hopen `$":",.u.x 0)"(.u.sub[`;`];`.u `i`L)";
