@@ -52,16 +52,16 @@ echo -e "  Chained RDB port(s) set as: [${CHAINED_RDB_PORTS[*]}]"
 echo -e "\nStarting processes on ports..."
 
 # Tickerplant
-# q tick.q -p [port number] -schemaDir [schema directory] -tplogDir [log directory] -procName [process name] < /dev/null >> [log file] 2>&1 &
-q kdb-tick/tick.q -p $TICK_PORT -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR -procName TP < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+# q tick.q -p [port number] -s [number of secondaries] -schemaDir [schema directory] -tplogDir [log directory] -procName [process name] < /dev/null >> [log file] 2>&1 &
+q kdb-tick/tick.q -p $TICK_PORT -s $s_flag -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR -procName TP < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started TP\t\t[$TICK_PORT]"
 
 # RDB
-# q r.q -p [port number] -tplogDir [log directory] -hdbDir [hdb directory] -tpPort [:tp port number] -hdbPort [:hdb port number] -procName [process name] < /dev/null >> [log file] 2>&1 &
-q kdb-tick/r.q -p $RDB_PORT -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -tpPort :$TICK_PORT -hdbPort ${HDB_PORTS[*]} -procName RDB_MAIN < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+# q r.q -p [port number] -s [number of secondaries] -tplogDir [log directory] -hdbDir [hdb directory] -tpPort [:tp port number] -hdbPort [hdb port number] -procName [process name] < /dev/null >> [log file] 2>&1 &
+q kdb-tick/r.q -p $RDB_PORT -s $s_flag -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -tpPort :$TICK_PORT -hdbPort ${HDB_PORTS[*]} -procName RDB_MAIN < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started RDB_MAIN\t[$RDB_PORT]"
 for i in "${CHAINED_RDB_PORTS[@]}"; do
-  q kdb-tick/r.q -p $i -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -tpPort :$TICK_PORT -hdbPort ${HDB_PORTS[*]} -procName RDB_CHAIN_$i < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+  q kdb-tick/r.q -p $i -s $s_flag -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -tpPort :$TICK_PORT -hdbPort ${HDB_PORTS[*]} -procName RDB_CHAIN_$i < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
   echo -e "  Started RDB_CHAIN\t[$i]"
 done
 
@@ -69,22 +69,22 @@ done
 # symbol selection example
 
 # HDB
-# q hdb.q -p [port number] -hdbDir [hdb directory] -procName [process name] < /dev/null >> [log file] 2>&1 &
+# q hdb.q -p [port number] -s [number of secondaries] -hdbDir [hdb directory] -procName [process name] < /dev/null >> [log file] 2>&1 &
 # TODO: 
 # - wait until rdb started before starting hdb (or atleast until directory exists)
 # - use hdb.q script to add process logging/future analytics
 #q kdb-tick/hdb.q -p $HDB_PORT -hdbDir $HDB_DIR -procName HDB < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 for i in "${HDB_PORTS[@]}"; do
-  q kdb-tick/hdb.q -p $i -hdbDir $HDB_DIR -procName HDB_$i < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+  q kdb-tick/hdb.q -p $i -s $s_flag -hdbDir $HDB_DIR -procName HDB_$i < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
   echo -e "  Started HDB\t\t[$i]"
 done
 
 # Feedhandler
-# q [feedhandler initfile] -p [port number] < /dev/null > [log file] 2>&1 &
-q kdb-tick/fh.q -p $FH_PORT -tpPort $TICK_PORT -procName FH < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+# q [feedhandler initfile] -p [port number] -s [number of secondaries] -tpPort [tp port number] -procName [process name] < /dev/null > [log file] 2>&1 &
+q kdb-tick/fh.q -p $FH_PORT -s $s_flag -tpPort $TICK_PORT -procName FH < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started FH\t\t[$FH_PORT]"
 
 # Gateway
-# q gw.q -p [port number] -analyticsDir [analytics directory] -rdbPort [rdb port] -hdbPort [hdb port] -proceName [process name] < /dev/null >> [log file] 2>&1 &
-q kdb-tick/gw.q -p $GW_PORT -analyticsDir $ANALYTIC_DIR -rdbPort $RDB_PORT -hdbPort ${HDB_PORTS[*]} -procName GW < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+# q gw.q -p [port number] -analyticsDir [analytics directory] -rdbPort [rdb port] -hdbPort [hdb port] -procName [process name] < /dev/null >> [log file] 2>&1 &
+q kdb-tick/gw.q -p $GW_PORT -s $s_flag -analyticsDir $ANALYTIC_DIR -rdbPort $RDB_PORT -hdbPort ${HDB_PORTS[*]} -procName GW < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started GW\t\t[$GW_PORT]"
