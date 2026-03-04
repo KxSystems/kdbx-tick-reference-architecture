@@ -9,11 +9,8 @@ RDB_PORTS:$[()~CLI_ARGS[`crdbPort];
     CLI_ARGS[`crdbPort]
  ];
 
-// Open DB connections
-.log.info[enlist["Connecting to DB processes on ports [RDB: %s] and [HDB: %s]"],(RDB_PORTS;CLI_ARGS[`hdbPort])];
-/RDB_H:hopen`$"::",first CLI_ARGS[`rdbPort];
-/HDB_H:hopen`$"::",first CLI_ARGS[`hdbPort];
 // Initialise DB connections in a table
+.log.info[enlist["Connecting to DB processes on ports [RDB: %s] and [HDB: %s]"],(RDB_PORTS;CLI_ARGS[`hdbPort])];
 CONNECTIONS:([]proc:`$();handle:`int$());
 {[str;ports]
     c:count h:`$"::",/: ports;
