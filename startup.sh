@@ -29,35 +29,41 @@ if [ ! -f $e_flag ]; then
 fi
 source $e_flag
 
+echo -e "Parsed command line arguments as:\n  .env file: [$e_flag] \n  Secondaries: [$s_flag] \n  Parallel processes: [$m_flag]"
+
 # Define value of port to start processes on based on env vars and CLI flags
 HDB_PORT_END=$(( $PARALLEL_PORT_RANGE_START + m_flag - 1 ))
 HDB_PORTS=($HDB_PORT)
 for ((i=$PARALLEL_PORT_RANGE_START; i<=HDB_PORT_END; i++)); do
-    HDB_PORTS+=("$i")
+  HDB_PORTS+=("$i")
 done
 
-echo -e "Parsed command line arguments as:\n  .env file: [$e_flag] \n  Secondaries: [$s_flag] \n  Parallel processes: [$m_flag]"
-printf "  HDB port(s) set as: [${HDB_PORTS[*]}]\n"
+echo -e "  HDB port(s) set as: [${HDB_PORTS[*]}]"
 
 # Start from end of previous range
-#RDB_PORT_END=$(( HDB_PORT_END + m_flag ))
-#RDB_PORTS=()
-#for ((i=HDB_PORT_END+1; i<=RDB_PORT_END; i++)); do
-#    RDB_PORTS+=("$i")
-#done
-#printf "RDB ports: ${RDB_PORTS[*]}\n"
+RDB_PORT_END=$(( HDB_PORT_END + m_flag ))
+CHAINED_RDB_PORTS=()
+for ((i=HDB_PORT_END+1; i<=RDB_PORT_END; i++)); do
+  CHAINED_RDB_PORTS+=("$i")
+done
+echo -e "  Main RDB port set as: [$RDB_PORT]"
+echo -e "  Chained RDB port(s) set as: [${CHAINED_RDB_PORTS[*]}]"
 
-echo -e "Starting processes on ports..."
+echo -e "\nStarting processes on ports..."
 
 # Tickerplant
 # q tick.q -p [port number] -schemaDir [schema directory] -tplogDir [log directory] -procName [process name] < /dev/null >> [log file] 2>&1 &
 q kdb-tick/tick.q -p $TICK_PORT -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR -procName TP < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
-echo -e "  Started TP\t[$TICK_PORT]"
+echo -e "  Started TP\t\t[$TICK_PORT]"
 
 # RDB
 # q r.q -p [port number] -tplogDir [log directory] -hdbDir [hdb directory] -tpPort [:tp port number] -hdbPort [:hdb port number] -procName [process name] < /dev/null >> [log file] 2>&1 &
-q kdb-tick/r.q -p $RDB_PORT -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -tpPort :$TICK_PORT -hdbPort ${HDB_PORTS[*]} -procName RDB < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
-echo -e "  Started RDB\t[$RDB_PORT]"
+q kdb-tick/r.q -p $RDB_PORT -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -tpPort :$TICK_PORT -hdbPort ${HDB_PORTS[*]} -procName RDB_MAIN < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+echo -e "  Started RDB_MAIN\t[$RDB_PORT]"
+for i in "${CHAINED_RDB_PORTS[@]}"; do
+  q kdb-tick/r.q -p $i -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -tpPort :$TICK_PORT -hdbPort ${HDB_PORTS[*]} -procName RDB_CHAIN_$i < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+  echo -e "  Started RDB_CHAIN\t[$i]"
+done
 
 # RTE
 # symbol selection example
@@ -69,16 +75,16 @@ echo -e "  Started RDB\t[$RDB_PORT]"
 # - use hdb.q script to add process logging/future analytics
 #q kdb-tick/hdb.q -p $HDB_PORT -hdbDir $HDB_DIR -procName HDB < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 for i in "${HDB_PORTS[@]}"; do
-    q kdb-tick/hdb.q -p $i -hdbDir $HDB_DIR -procName HDB_$i < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
-    echo -e "  Started HDB\t[$i]"
+  q kdb-tick/hdb.q -p $i -hdbDir $HDB_DIR -procName HDB_$i < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+  echo -e "  Started HDB\t\t[$i]"
 done
 
 # Feedhandler
 # q [feedhandler initfile] -p [port number] < /dev/null > [log file] 2>&1 &
 q kdb-tick/fh.q -p $FH_PORT -tpPort $TICK_PORT -procName FH < /dev/null >> $PROCESS_LOG_DIR/fh 2>&1 &
-echo -e "  Started FH\t[$FH_PORT]"
+echo -e "  Started FH\t\t[$FH_PORT]"
 
 # Gateway
 # q gw.q -p [port number] -analyticsDir [analytics directory] -rdbPort [rdb port] -hdbPort [hdb port] -proceName [process name] < /dev/null >> [log file] 2>&1 &
 q kdb-tick/gw.q -p $GW_PORT -analyticsDir $ANALYTIC_DIR -rdbPort $RDB_PORT -hdbPort ${HDB_PORTS[*]} -procName GW < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
-echo -e "  Started GW\t[$GW_PORT]"
+echo -e "  Started GW\t\t[$GW_PORT]"
