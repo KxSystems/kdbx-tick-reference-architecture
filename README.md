@@ -44,6 +44,38 @@ $ cd x-starter
 $ ./startup.sh -e /path/to/.env
 ```
 
+<details>
+<summary>Additional Optional Flags</summary>
+
+* **-s**
+
+    Number of secondary threads to make available for each process.
+
+    Defaults to 0.
+
+    Reference: https://code.kx.com/q/basics/cmdline/#-s-secondary-threads
+
+    ```
+    $ cd x-starter
+    $ ./startup.sh -s 4
+    ```
+
+* **-m**
+
+    Number of additional RDB and HDB processes to start in parallel. Additional RDBs are started as "chained" which do not carry out any end of day saves or HDB reloads.
+
+    Defaults to 0.
+
+    Reference: https://code.kx.com/q/kb/kdb-tick/#chained-rdbs
+
+    ```
+    $ cd x-starter
+    $ ./startup.sh -m 2
+    ```
+
+</details>
+
+
 ### Stop
 To stop the system run the shutdown script:
 ```
