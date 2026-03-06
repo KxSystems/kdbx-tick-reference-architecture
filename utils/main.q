@@ -9,3 +9,5 @@ CLI_ARGS:.Q.opt .z.x;
     .log.procStarted[x];
     .log.initFile[x];
  }[first CLI_ARGS[`procName]];
+
+.z.exit:{.log.info[("%s Process ended with exit code: %r";first CLI_ARGS[`procName];x)]}
