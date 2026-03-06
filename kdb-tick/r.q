@@ -53,15 +53,4 @@ upd:insert;
     h ({`.u.RDB_CONNECTIONS upsert (.z.w;`$x;1b;"RDB_MAIN"~x);(.u.sub[`;`];`.u `i`L)};first CLI_ARGS[`procName])
  }[(hopen `$":",.u.x 0)];
 
-// Set .z.pg/ps to log when IPC requests are received
-.z.pg:{
-    .log.info[("Received synchronous request to execute:\t %r";x)];
-    value x
- };
-
-.z.ps:{
-    .log.info[("Received asynchronous request to execute:\t %r";x)];
-    value x
- };
-
 .log.info[("RDB successfully initialised. Connected to TP at port [%s] and HDB at location [%s]";1_.u.x[0];first system"pwd")];
