@@ -27,6 +27,22 @@ system"l utils/main.q";
 /q tick.q SRC [DST] [-p 5010] [-o h]
 /system"l tick/",(src:first .z.x,enlist"sym"),".q"
 
+// Define a table to store RDB leader/follower connection details
+//  - updated by r.q and .z.pc
+.u.RDB_CONNECTIONS:([handle:`int$()];procName:`$();alive:`boolean$();leader:`boolean$());
+// Function to call in .z.pc to update a follower to leader if leader fails
+.u.failoverRDB:{[h]
+    .u.RDB_CONNECTIONS[h;`alive]:0b;
+    // If leader, swap to next available
+    if[.u.RDB_CONNECTIONS[h;`leader];
+        .u.RDB_CONNECTIONS[h;`leader]:0b;
+        newH:exec first handle from .u.RDB_CONNECTIONS where alive;
+        .u.RDB_CONNECTIONS[newH;`leader]:1b;
+        // Update MAIN_FLAG on RDB to enable write down at EOD
+        newH (set;`MAIN_FLAG;1b);
+    ];
+ };
+
 // Load schemas
 {[x]
     .log.info["Loading schemas from ",x];
