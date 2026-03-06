@@ -62,7 +62,7 @@ $ ./startup.sh -e /path/to/.env
 
 * **-m**
 
-    Number of additional RDB and HDB processes to start in parallel. Additional RDBs are started as "chained" which do not carry out any end of day saves or HDB reloads.
+    Number of additional RDB and HDB processes to start in parallel. Additional RDBs are started as "chained" which do not carry out any end of day saves or HDB reloads. The gateway will not query the main RDB when `-m` is set.
 
     Defaults to 0.
 
@@ -103,6 +103,8 @@ user      72688  0.0  0.0 226456  9728 pts/4    Sl+  15:55   0:00 q gw.q -p 5013
 When running multiple RDBs, they will operate with the first RDB (`RDB_MAIN`) acting as a leader and any additional RDBs (`RDB_CHAIN_x`) will start as followers. In this set up only the leader carries out end of day writes and HDB reloads, so in the event that the `RDB_MAIN` fails, the first available `RDB_CHAIN` will be triggered to become the leader. The status of leadership is tracked in the `.u.RDB_CONNECTIONS` table on the tickerplant.
 
 _Note: If `RDB_MAIN` fails it should NOT be restarted as main and instead a new chained RDB should be started to return back to the desired number of RDB._
+
+The gateway will only query processes available on startup, therefore if additional DB processes are started while the gateway is running it will need to be restarted to query all new DB processes.
 
 
 ### Querying

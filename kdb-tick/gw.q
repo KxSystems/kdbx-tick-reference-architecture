@@ -11,11 +11,16 @@ RDB_PORTS:$[()~CLI_ARGS[`crdbPort];
 
 // Initialise DB connections in a table
 .log.info[enlist["Connecting to DB processes on ports [RDB: %s] and [HDB: %s]"],(RDB_PORTS;CLI_ARGS[`hdbPort])];
-CONNECTIONS:([]proc:`$();handle:`int$());
+CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
 {[str;ports]
     c:count h:`$"::",/: ports;
-    `CONNECTIONS upsert (`$str,/:string 1+til[c]),'hopen each h;
+    `CONNECTIONS upsert (hopen each h),'(`$str,/:string 1+til[c]),'c#1b;
  }./:(enlist"RDB_";enlist"HDB_"),'enlist each (RDB_PORTS;CLI_ARGS[`hdbPort]);
+// Disable process for querying if shutdown via .z.pc
+.z.pc:{
+    .log.warn[("Lost connection to DB process, removing from query list:\t %r"; CONNECTIONS[x])];
+    CONNECTIONS[x;`alive]:0b;
+ };
 
 // REST server config
 .log.info["Initialising REST server"];

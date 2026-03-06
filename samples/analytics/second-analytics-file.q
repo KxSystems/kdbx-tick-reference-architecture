@@ -6,7 +6,8 @@ hdbQuery:{[tab;d;t1;t2;s]
     w:((=;`date;d);(within;`time;(t1;t2)));
     if[not null s;w:w,enlist (=;`sym;enlist s)];
     // IPC with parse tree
-    h:first exec 1?handle from CONNECTIONS where proc like "HDB_*";
+    h:first exec 1?handle from CONNECTIONS where alive, proc like "HDB_*";
+    if[null h;:"No HDBs available"];
     /show h "CLI_ARGS[`procName]";
     h (?;tab;w;0b;())
  };
