@@ -1,2 +1,0 @@
-energy:([] time:`timespan$(); sym:`symbol$(); date:`date$(); timeWindow:`time$(); consumption:`float$());
-weather:([] time:`timespan$(); sym:`symbol$(); dateTime:`datetime$() ;temp:`float$();humidity:`float$();precipitation:`float$();windSpeed:`float$());
