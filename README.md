@@ -99,6 +99,12 @@ user      72687  0.0  0.0  86300  6016 pts/4    Sl+  15:55   0:00 q /path/to/dat
 user      72688  0.0  0.0 226456  9728 pts/4    Sl+  15:55   0:00 q gw.q -p 5013 -rdbPort 5011 -hdbPort 5012 <b>-procName GW</b>
 </pre>
 
+### Failover
+When running multiple RDBs, they will operate with the first RDB (`RDB_MAIN`) acting as a leader and any additional RDBs (`RDB_CHAIN_x`) will start as followers. In this set up only the leader carries out end of day writes and HDB reloads, so in the event that the `RDB_MAIN` fails, the first available `RDB_CHAIN` will be triggered to become the leader. The status of leadership is tracked in the `.u.RDB_CONNECTIONS` table on the tickerplant.
+
+_Note: If `RDB_MAIN` fails it should NOT be restarted as main and instead a new chained RDB should be started to return back to the desired number of RDB._
+
+
 ### Querying
 The gateway process takes advantage of the [REST module in KDB-X](https://code.kx.com/kdb-x/modules/rest-server/overview.html) to act as a REST server. To access the data in the system there are some default REST API endpoints available, `localhost:GW_PORT/rdb` and `localhost:GW_PORT/HDB`.
 
