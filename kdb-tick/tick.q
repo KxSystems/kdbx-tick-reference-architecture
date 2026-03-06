@@ -32,14 +32,21 @@ system"l utils/main.q";
 .u.RDB_CONNECTIONS:([handle:`int$()];procName:`$();alive:`boolean$();leader:`boolean$());
 // Function to call in .z.pc to update a follower to leader if leader fails
 .u.failoverRDB:{[h]
+    .log.warn[("Lost connection to RDB, checking for failover actions:\t %r"; .u.RDB_CONNECTIONS[h])];
     .u.RDB_CONNECTIONS[h;`alive]:0b;
     // If leader, swap to next available
     if[.u.RDB_CONNECTIONS[h;`leader];
-        .u.RDB_CONNECTIONS[h;`leader]:0b;
-        newH:exec first handle from .u.RDB_CONNECTIONS where alive;
-        .u.RDB_CONNECTIONS[newH;`leader]:1b;
-        // Update MAIN_FLAG on RDB to enable write down at EOD
-        newH (set;`MAIN_FLAG;1b);
+        .log.warn["RDB was leader, failing over to follower"];
+        @[{[h]
+            .u.RDB_CONNECTIONS[h;`leader]:0b;
+            newH:exec first handle from .u.RDB_CONNECTIONS where alive;
+            if[not newH in key .u.RDB_CONNECTIONS;'stop];
+            .u.RDB_CONNECTIONS[newH;`leader]:1b;
+            // Update MAIN_FLAG on RDB to enable write down at EOD
+            newH (set;`MAIN_FLAG;1b);
+            .log.warn[("RDB leader successfully failed over to:\t %r";.u.RDB_CONNECTIONS[newH])];
+        };h;{.log.fatal[("No available RDB to failover to:\t %r";.u.RDB_CONNECTIONS)]}
+        ];
     ];
  };
 
