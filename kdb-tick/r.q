@@ -44,7 +44,7 @@ upd:insert;
 / HARDCODE \cd if other than logdir/db
 // Custom DB location
 /TODO: logging for tplog replay
-.u.rep:{(.[;();:;].)each x;if[null first y;:()];-11!y;if[MAIN_FLAG;system "cd ",first CLI_ARGS[`hdbDir]]};
+.u.rep:{(.[;();:;].)each x;if[null first y;:()];-11!y;system "cd ",first CLI_ARGS[`hdbDir]};
 
 / connect to ticker plant for (schema;(logcount;log))
 /.u.rep .(hopen `$":",.u.x 0)"(.u.sub[`;`];`.u `i`L)";
