@@ -53,4 +53,7 @@ upd:insert;
     h ({`.u.RDB_CONNECTIONS upsert (.z.w;`$x;1b;"RDB_MAIN"~x);(.u.sub[`;`];`.u `i`L)};first CLI_ARGS[`procName])
  }[(hopen `$":",.u.x 0)];
 
+// Set timer to run every minute for logging checks
+system"t 60000";
+
 .log.info[("RDB successfully initialised. Connected to TP at port [%s] and HDB at location [%s]";1_.u.x[0];first system"pwd")];

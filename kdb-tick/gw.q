@@ -41,5 +41,8 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
 .log.info["Registering endpoints:\t",.j.j value 1_.endpoints[;`endpoint]];
 .rest.register ./: value value each 1_.endpoints;
 
+// Set timer to run every minute for logging checks
+system"t 60000";
+
 /TODO: log hostname to show full endpoint?
 .log.info[("Successfully initialised GW at port [%s]";`long$first system"p")];

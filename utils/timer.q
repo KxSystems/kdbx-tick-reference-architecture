@@ -7,7 +7,9 @@
     value[.timer.funcs]@\:(::);
  };
 
-// set \t
+// set \t in respective scripts
+
+// Example function definitions
 /
 .timer.funcs[`func1]:{[] show .z.p};
 .timer.funcs[`func2]:{[] show .z.t;};
