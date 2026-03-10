@@ -254,6 +254,21 @@ drwxr-xr-x 6 gdanc gdanc 4096 Feb 18 15:42 ../
 
 </details>
 
+## Timers
+Additional logic is added to allow for multiple separately defined functions to be called on a timer on a process (using `.z.ts`). This is done by adding functions to the `.timer.funcs` dictionary, intialised by `timer.q`. Functions added this way are expected to have null input.
+
+<details>
+<summary>Example Timer Function</summary>
+
+```
+.timer.funcs[`newFunction]:{[]
+    // custom logic
+};
+```
+</details>
+
+The frequency of the timer is controlled by the individual processes.
+
 ## Appendix
 ### Directory Trees
 <details>
