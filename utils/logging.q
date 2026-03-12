@@ -3,21 +3,26 @@
 .log:.logger.createLog[];
 
 // Add custom logic
+.log.fileHandle:()!();
 
 // Initialise the log file
 //  - proc == string to prepend to log file name
 //      .e.g "Tickerplant"
-.log.initFile:{[proc]
+//  - dt == datetime to append to log file name
+//      .e.g .z.z
+.log.initFile:{[proc;dt]
     // Define log file based on current time and sanitise file name
-    timeStr:ssr[;;""]/[string .z.z;(".";":")];
+    timeStr:ssr[;;""]/[string dt;(".";":")];
     fp:hsym `$getenv[`PROCESS_LOG_DIR],"/",proc,"_",timeStr,".log";
     // Remove default output to stderr/stdout (1/2) and replace with log file
     /TODO: review this method
     .log.remove[1;`trace`debug`info`warn];
     .log.remove[2;`error`fatal];
     // Open handle and add custom file to log sinks
-    .log.fileHandle:hopen fp;
-    .log.add[.log.fileHandle;`trace`debug`info`warn`error`fatal];
+    h:hopen fp;
+    // Store file handle and date for rollover management
+    .log.fileHandle[h]:"D"$first "T" vs timeStr;
+    .log.add[h;`trace`debug`info`warn`error`fatal];
  };
 
 // Rollover the log file to a new date
@@ -27,16 +32,24 @@
 //            .e.g .z.d+1
 .log.rollover:{[proc;d]
     // Remove previous log file from sinks
-    .log.remove[.log.fileHandle;`trace`debug`info`warn`error`fatal];
+    h:first key .log.fileHandle;
+    .log.remove[h;`trace`debug`info`warn`error`fatal];
     // Close handle to previous file
-    hclose .log.fileHandle;
+    hclose h;
+    .log.fileHandle:()!();
     // Set new log file to be new day
-    timeStr:ssr[;;""]/[string `datetime$d;(".";":")];
-    fp:hsym `$getenv[`PROCESS_LOG_DIR],"/",proc,"_",timeStr,".log";
-    .log.fileHandle:hopen fp;
-    // Add new file to sinks
-    .log.add[.log.fileHandle;`trace`debug`info`warn`error`fatal];
+    .log.initFile[proc;`datetime$d];
  };
+
+// Add rollover to timer (if loaded)
+if[count key `.timer;
+    .timer.funcs[`loggingRoller]:{[]
+        // If logging file dat is still yesterday, roll to today
+        if[first[value .log.fileHandle]=.z.d-1;
+            .log.rollover[first CLI_ARGS[`procName];.z.d]
+        ];
+    };
+ ];
 
 // Show the q command that was run to start the current process.
 //  - proc == string to prepend to log line

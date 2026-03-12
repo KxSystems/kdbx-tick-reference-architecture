@@ -6,7 +6,8 @@ rdbQuery:{[tab;t1;t2;s]
     w:enlist (within;`time;(t1;t2));
     if[not null s;w:w,enlist (=;`sym;enlist s)];
     // IPC with parse tree
-    h:first exec 1?handle from CONNECTIONS where proc like "RDB_*";
+    h:first exec 1?handle from CONNECTIONS where alive, proc like "RDB_*";
+    if[null h;:"No RDBs available"];
     /show h "CLI_ARGS[`procName]";
     h (?;tab;w;0b;())
  };
