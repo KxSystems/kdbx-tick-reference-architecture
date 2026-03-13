@@ -27,6 +27,29 @@ system"l utils/main.q";
 /q tick.q SRC [DST] [-p 5010] [-o h]
 /system"l tick/",(src:first .z.x,enlist"sym"),".q"
 
+// Define a table to store RDB leader/follower connection details
+//  - updated by r.q and .z.pc
+.u.RDB_CONNECTIONS:([handle:`int$()];procName:`$();alive:`boolean$();leader:`boolean$());
+// Function to call in .z.pc to update a follower to leader if leader fails
+.u.failoverRDB:{[h]
+    .log.warn[("Lost connection to RDB, checking for failover actions:\t %r"; .u.RDB_CONNECTIONS[h])];
+    .u.RDB_CONNECTIONS[h;`alive]:0b;
+    // If leader, swap to next available
+    if[.u.RDB_CONNECTIONS[h;`leader];
+        .log.warn["RDB was leader, failing over to follower"];
+        @[{[h]
+            .u.RDB_CONNECTIONS[h;`leader]:0b;
+            newH:exec first handle from .u.RDB_CONNECTIONS where alive;
+            if[not newH in key .u.RDB_CONNECTIONS;'stop];
+            .u.RDB_CONNECTIONS[newH;`leader]:1b;
+            // Update MAIN_FLAG on RDB to enable write down at EOD
+            newH (set;`MAIN_FLAG;1b);
+            .log.warn[("RDB leader successfully failed over to:\t %r";.u.RDB_CONNECTIONS[newH])];
+        };h;{.log.fatal[("No available RDB to failover to:\t %r";.u.RDB_CONNECTIONS)]}
+        ];
+    ];
+ };
+
 // Load schemas
 {[x]
     .log.info["Loading schemas from ",x];
@@ -46,13 +69,15 @@ endofday:{end d;d+:1;if[l;hclose l;l::0(`.u.ld;d)]};
 ts:{if[d<x;if[d<x-1;system"t 0";'"more than one day?"];endofday[]]};
 
 if[system"t";
- .z.ts:{pub'[t;value each t];@[`.;t;@[;`sym;`g#]0#];i::j;ts .z.D};
+ /.z.ts:{pub'[t;value each t];@[`.;t;@[;`sym;`g#]0#];i::j;ts .z.D};
+ .timer.funcs[`tick]:{pub'[t;value each t];@[`.;t;@[;`sym;`g#]0#];i::j;ts .z.D};
  upd:{[t;x]
  if[not -16=type first first x;if[d<"d"$a:.z.P;.z.ts[]];a:"n"$a;x:$[0>type first x;a,x;(enlist(count first x)#a),x]];
  t insert x;if[l;l enlist (`upd;t;x);j+:1];}];
 
 if[not system"t";system"t 1000";
- .z.ts:{ts .z.D};
+ /.z.ts:{ts .z.D};
+ .timer.funcs[`tick]:{ts .z.D};
  upd:{[t;x]ts"d"$a:.z.P;
  if[not -16=type first first x;a:"n"$a;x:$[0>type first x;a,x;(enlist(count first x)#a),x]];
  f:key flip value t;pub[t;$[0>type first x;enlist f!x;flip f!x]];if[l;l enlist (`upd;t;x);i+:1];}];

@@ -44,9 +44,16 @@ upd:insert;
 / HARDCODE \cd if other than logdir/db
 // Custom DB location
 /TODO: logging for tplog replay
-.u.rep:{(.[;();:;].)each x;if[null first y;:()];-11!y;if[MAIN_FLAG;system "cd ",first CLI_ARGS[`hdbDir]]};
+.u.rep:{(.[;();:;].)each x;if[null first y;:()];-11!y;system "cd ",first CLI_ARGS[`hdbDir]};
 
 / connect to ticker plant for (schema;(logcount;log))
-.u.rep .(hopen `$":",.u.x 0)"(.u.sub[`;`];`.u `i`L)";
+/.u.rep .(hopen `$":",.u.x 0)"(.u.sub[`;`];`.u `i`L)";
+// Connect to TP to initialise as leader/follower and subscribe
+.u.rep . {[h]
+    h ({`.u.RDB_CONNECTIONS upsert (.z.w;`$x;1b;"RDB_MAIN"~x);(.u.sub[`;`];`.u `i`L)};first CLI_ARGS[`procName])
+ }[(hopen `$":",.u.x 0)];
+
+// Set timer to run every minute for logging checks
+system"t 60000";
 
 .log.info[("RDB successfully initialised. Connected to TP at port [%s] and HDB at location [%s]";1_.u.x[0];first system"pwd")];

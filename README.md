@@ -62,7 +62,7 @@ $ ./startup.sh -e /path/to/.env
 
 * **-m**
 
-    Number of additional RDB and HDB processes to start in parallel. Additional RDBs are started as "chained" which do not carry out any end of day saves or HDB reloads.
+    Number of additional RDB and HDB processes to start in parallel. Additional RDBs are started as "chained" which do not carry out any end of day saves or HDB reloads. The gateway will not query the main RDB when `-m` is set.
 
     Defaults to 0.
 
@@ -98,6 +98,14 @@ user      72686  0.0  0.0  86164  6144 pts/4    Sl+  15:55   0:00 q kdb-tick/r.q
 user      72687  0.0  0.0  86300  6016 pts/4    Sl+  15:55   0:00 q /path/to/data/directory/hdb -p 5012 <b>-procName HDB</b>
 user      72688  0.0  0.0 226456  9728 pts/4    Sl+  15:55   0:00 q gw.q -p 5013 -rdbPort 5011 -hdbPort 5012 <b>-procName GW</b>
 </pre>
+
+### Failover
+When running multiple RDBs, they will operate with the first RDB (`RDB_MAIN`) acting as a leader and any additional RDBs (`RDB_CHAIN_x`) will start as followers. In this set up only the leader carries out end of day writes and HDB reloads, so in the event that the `RDB_MAIN` fails, the first available `RDB_CHAIN` will be triggered to become the leader. The status of leadership is tracked in the `.u.RDB_CONNECTIONS` table on the tickerplant.
+
+_Note: If `RDB_MAIN` fails it should NOT be restarted as main and instead a new chained RDB should be started to return back to the desired number of RDB._
+
+The gateway will only query processes available on startup, therefore if additional DB processes are started while the gateway is running it will need to be restarted to query all new DB processes.
+
 
 ### Querying
 The gateway process takes advantage of the [REST module in KDB-X](https://code.kx.com/kdb-x/modules/rest-server/overview.html) to act as a REST server. To access the data in the system there are some default REST API endpoints available, `localhost:GW_PORT/rdb` and `localhost:GW_PORT/HDB`.
@@ -245,6 +253,21 @@ drwxr-xr-x 6 gdanc gdanc 4096 Feb 18 15:42 ../
 ```
 
 </details>
+
+## Timers
+Additional logic is added to allow for multiple separately defined functions to be called on a timer on a process (using `.z.ts`). This is done by adding functions to the `.timer.funcs` dictionary, intialised by `timer.q`. Functions added this way are expected to have null input.
+
+<details>
+<summary>Example Timer Function</summary>
+
+```
+.timer.funcs[`newFunction]:{[]
+    // custom logic
+};
+```
+</details>
+
+The frequency of the timer is controlled by the individual processes.
 
 ## Appendix
 ### Directory Trees
