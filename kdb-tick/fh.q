@@ -8,7 +8,7 @@ TP_H:hopen`$"::",first CLI_ARGS[`tpPort];
 
 //Ingest sample data
 .log.info["Ingesting data"];
-system"l ",first CLI_ARGS[`customData];
+system"l ",first CLI_ARGS[`sampleData];
 
 //Live data stimulation
 .log.info["Upserting data to TP"];

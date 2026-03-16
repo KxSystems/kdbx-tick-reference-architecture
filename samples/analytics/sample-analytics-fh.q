@@ -1,12 +1,12 @@
 //Sample script for parsing in sample data to the FH. 
 
 //Get data directory
-customDataDir:getenv `CUSTOM_DATA;
+sampleDataDir:getenv `SAMPLE_DATA;
 
 //Ingest Energy data from csv file
 .fh.parse.energy:{[csvFile]
         //Load CSV
-        energyRaw:("IDTF";enlist ",") 0: `$(customDataDir,"/",csvFile);
+        energyRaw:("IDTF";enlist ",") 0: `$(sampleDataDir,"/",csvFile);
         //Rename columns
         energyRaw:`idx`date`timeWindow`consumption xcol energyRaw;
         //Update to include time and sym columns
@@ -20,7 +20,7 @@ customDataDir:getenv `CUSTOM_DATA;
 //Ingest Weather data from csv file
 .fh.parse.weather:{[csvFile]
         //Load CSV
-        weatherRaw:("SZFFFF";enlist ",") 0: `$(customDataDir,"/",csvFile);
+        weatherRaw:("SZFFFF";enlist ",") 0: `$(sampleDataDir,"/",csvFile);
         //Rename columns
         weatherRaw:`location`dateTime`temp`humidity`precipitation`windSpeed xcol weatherRaw;
         //Update to include time and sym columns
