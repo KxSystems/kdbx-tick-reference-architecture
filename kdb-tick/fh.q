@@ -8,12 +8,11 @@ TP_H:hopen`$"::",first CLI_ARGS[`tpPort];
 
 //Ingest sample data
 .log.info["Ingesting sample data"];
-system"l ",first CLI_ARGS[`sampleData];
+system"l ",(first CLI_ARGS[`sampleData]),"/structured/parse-structured-data.q";
 
 //Live data stimulation using timer function. Sample data is upserted to the TP every set interval
 //On failure, logs error message
 .z.ts:{[] 
-        //
         @[.fh.upsert.data; (::); {.log.error["Upsert failed | ERROR: ", x]}];
         };
 

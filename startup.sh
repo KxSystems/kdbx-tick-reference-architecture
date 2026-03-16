@@ -81,7 +81,7 @@ done
 
 # Feedhandler
 # q [feedhandler initfile] -p [port number] -customData [custom data] -s [number of secondaries] -tpPort [tp port number] -procName [process name] < /dev/null > [log file] 2>&1 &
-q kdb-tick/fh.q -p $FH_PORT -sampleData samples/analytics/sample-analytics-fh.q -fhTimer $FH_TIMER -s $s_flag -tpPort $TICK_PORT -procName FH < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+q kdb-tick/fh.q -p $FH_PORT -sampleData $SAMPLE_DATA -fhTimer $FH_TIMER -s $s_flag -tpPort $TICK_PORT -procName FH < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started FH\t\t[$FH_PORT]"
 
 # Gateway
