@@ -26,13 +26,13 @@ if [ ! -f $e_flag ]; then
 fi
 source $e_flag 
 
-#Timer Overwrite Function
-#Start FH timer
+#Feedhandler timer overwrite function
+#Star timer
 start_fh_timer(){
   echo "fh:hopen $FH_PORT; fh\"\\\\t $FH_TIMER\";exit 0"|q
   echo "FH timer started on port $FH_PORT at $FH_TIMER ms"
 }
-#Stop FH timer
+#Stop timer
 stop_fh_timer(){
   echo "fh:hopen $FH_PORT; fh\"\\\\t 0\";exit 0"|q
   echo "FH timer stopped on port $FH_PORT "

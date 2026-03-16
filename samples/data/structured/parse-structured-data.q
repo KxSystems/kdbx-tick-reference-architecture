@@ -3,7 +3,6 @@
 //Get sample data directory
 sampleDataDir:getenv `SAMPLE_DATA;
 
-
 //Ingest Energy data from csv file
 .fh.parse.energy:{[csvFile]
         //Load CSV

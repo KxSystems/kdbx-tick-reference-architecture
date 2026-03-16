@@ -21,8 +21,8 @@ The following configuration steps are required before being able to run the tick
     | FH_PORT         | 5014                             | An available port to run the feedhandler process on.  
     | ANALYTIC_DIR    | /path/to/repo/x-starter/samples/analytics                             | A path to a directory which contains one or more .q files containing to use on the gateway as REST endpoints.                                                               |
     | PARALLEL_PORT_RANGE_START    | 5020                             | The starting port value for creating additional parallel processes.
-    | FH_TIMER         | Time value in miliseconds                             | A feedhandler timer variable to set stimulate automatic data ingestion.                                                               |
-    
+    | FH_TIMER         | Time value in miliseconds                             | A feedhandler timer variable to stimulate automatic data ingestion.                                                               |
+
 * Create a `.q` file in `SCHEMA_DIR` containing schemas of tables to be used by the system. Multiple schema files can be used.
 * Create the `TPLOG_DIR`, `HDB_DIR`, and `PROCESS_LOG_DIR` directories.
 * Ensure the `startup.sh` and `shutdown.sh` scripts are executable.
