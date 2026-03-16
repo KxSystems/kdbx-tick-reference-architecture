@@ -14,7 +14,7 @@ system"l ",first CLI_ARGS[`sampleData];
 .log.info["Upserting data to TP"];
 .z.ts:{[] .fh.upsert.data[]};
 
-//Set timer to run every hour for data ingestion
+//Set timer to run every minute for data ingestion
 system"t 60000";
 
 .log.info["Successfully initialised FH"];
