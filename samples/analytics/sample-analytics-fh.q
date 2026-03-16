@@ -35,6 +35,8 @@ sampleDataDir:getenv `SAMPLE_DATA;
 .fh.upsert.data:{[]
         neg[TP_H](".u.upd";`energy;value flip (select from .fh.parse.energy["KwhConsumptionBlower78_1.csv"])); 
         neg[TP_H](".u.upd";`weather;value flip (select from .fh.parse.weather["weather_data.csv"]));
+        //Custom log of rows ingested for each table
+        .log.info["Upsert OK | energy rows=",(string count (select from .fh.parse.energy["KwhConsumptionBlower78_1.csv"])), " | weather rows=", (string count (select from .fh.parse.weather["weather_data.csv"]))];
     };
 
 
