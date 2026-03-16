@@ -6,9 +6,16 @@ system"l utils/main.q";
 //Open connection to TP
 TP_H:hopen`$"::",first CLI_ARGS[`tpPort];
 
-//Ingest custom data
+//Ingest sample data
+.log.info["Ingesting data"];
 system"l ",first CLI_ARGS[`customData];
 
 //Live data stimulation
-.z.ts:{[] .upsert.data[]};
+.log.info["Upserting data to TP"];
+.z.ts:{[] .fh.upsert.data[]};
+
+//Set timer to run every hour for data ingestion
+system"t 60000";
+
+.log.info["Successfully initialised FH"];
 

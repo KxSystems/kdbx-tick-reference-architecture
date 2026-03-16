@@ -81,16 +81,16 @@ done
 
 # Feedhandler
 # q [feedhandler initfile] -p [port number] -customData [custom data] -s [number of secondaries] -tpPort [tp port number] -procName [process name] < /dev/null > [log file] 2>&1 &
-q kdb-tick/fh.q -p $FH_PORT -customData custom-functions/parseCustomData.q -fhTimer $FH_TIMER -s $s_flag -tpPort $TICK_PORT -procName FH < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+q kdb-tick/fh.q -p $FH_PORT -customData samples/analytics/sample-analytics-fh.q -fhTimer $FH_TIMER -s $s_flag -tpPort $TICK_PORT -procName FH < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started FH\t\t[$FH_PORT]"
 #Timer processed
 #Start FH timer
-start_timer(){
+start_fh_timer(){
   echo "fh:hopen $FH_PORT; fh\"\\\\t $FH_TIMER\";exit 0"|q
   echo "FH timer started on port $FH_PORT at $FH_TIMER ms"
 }
 #Stop FH timer
-stop_timer(){
+stop_fh_timer(){
   echo "fh:hopen $FH_PORT; fh\"\\\\t 0\";exit 0"|q
   echo "FH timer stopped on port $FH_PORT "
 }
