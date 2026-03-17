@@ -27,7 +27,7 @@ if [ ! -f $e_flag ]; then
   echo "Env file not found: $e_flag"
   exit 1
 fi
-source $e_flag
+source $e_flag 
 
 echo -e "Parsed command line arguments as:\n  .env file: [$e_flag] \n  Secondaries: [$s_flag] \n  Parallel processes: [$m_flag]"
 
@@ -80,8 +80,8 @@ for i in "${HDB_PORTS[@]}"; do
 done
 
 # Feedhandler
-# q [feedhandler initfile] -p [port number] -s [number of secondaries] -tpPort [tp port number] -procName [process name] < /dev/null > [log file] 2>&1 &
-q kdb-tick/fh.q -p $FH_PORT -s $s_flag -tpPort $TICK_PORT -procName FH < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+# q [feedhandler initfile] -p [port number] -fhDir [fh custom analytics directory] -s [number of secondaries] -tpPort [tp port number] -procName [process name] < /dev/null > [log file] 2>&1 &
+q kdb-tick/fh.q -p $FH_PORT -fhDir $FH_ANALYTIC_DIR -fhTimer $FH_TIMER -s $s_flag -tpPort $TICK_PORT -procName FH < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started FH\t\t[$FH_PORT]"
 
 # Gateway

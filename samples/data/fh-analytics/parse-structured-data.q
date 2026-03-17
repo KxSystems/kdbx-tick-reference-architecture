@@ -1,12 +1,12 @@
-//This script contains custom logic to parse in example data to the feedhandler
+//Sample script for parsing in sample data to the FH. 
 
-//Get data directory
-customDataDir:getenv `CUSTOM_DATA;
+//Get sample data directory
+sampleDataDir:getenv `SAMPLE_DATA;
 
 //Ingest Energy data from csv file
-.parse.energy:{[csvFile]
+.fh.parse.energy:{[csvFile]
         //Load CSV
-        energyRaw:("IDTF";enlist ",") 0: `$(customDataDir,"/",csvFile);
+        energyRaw:("IDTF";enlist ",") 0: `$(sampleDataDir,"/structured/",csvFile);
         //Rename columns
         energyRaw:`idx`date`timeWindow`consumption xcol energyRaw;
         //Update to include time and sym columns
@@ -18,9 +18,9 @@ customDataDir:getenv `CUSTOM_DATA;
     };
 
 //Ingest Weather data from csv file
-.parse.weather:{[csvFile]
+.fh.parse.weather:{[csvFile]
         //Load CSV
-        weatherRaw:("SZFFFF";enlist ",") 0: `$(customDataDir,"/",csvFile);
+        weatherRaw:("SZFFFF";enlist ",") 0: `$(sampleDataDir,"/structured/",csvFile);
         //Rename columns
         weatherRaw:`location`dateTime`temp`humidity`precipitation`windSpeed xcol weatherRaw;
         //Update to include time and sym columns
@@ -31,14 +31,10 @@ customDataDir:getenv `CUSTOM_DATA;
         `time`sym`dateTime`temp`humidity`precipitation`windSpeed xcols weatherTab
     };
 
-//Function to load in the data
-.load.data:{[num;tabName;csvFile]
-                $[`energy=tabName; 
-                        //Select custom number of rows from csv file
-                        tab:num?(select from .parse.energy[csvFile]);
-                    `weather=tabName;
-                        tab:num?(select from .parse.weather[csvFile]);
-                ];    
-                //Return data in column list
-                tab[cols tab]
-            };
+//Upsert data to TP
+.fh.upsert.data:{[]
+        neg[TP_H](".u.upd";`energy;value flip (select from .fh.parse.energy["KwhConsumptionBlower78_1.csv"])); 
+        neg[TP_H](".u.upd";`weather;value flip (select from .fh.parse.weather["weather_data.csv"]));
+        //Custom log of rows ingested for each table
+        .log.info["Upsert OK | energy rows:",(string count (select from .fh.parse.energy["KwhConsumptionBlower78_1.csv"])), " | weather rows:", (string count (select from .fh.parse.weather["weather_data.csv"]))];
+    };

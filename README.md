@@ -8,8 +8,8 @@ The following configuration steps are required before being able to run the tick
 
     | Variable        | Example Value                    | Description                                                                                                    |
     |-----------------|----------------------------------|----------------------------------------------------------------------------------------------------------------|
-    | SCHEMA_DIR      | /path/to/data/directory/schemas  | A path to a directory which contains one or more .q files containg schemas of tables to be used by the system. |
-    | CUSTOM_DATA      | /path/to/data/directory/data  | A path to a directory which contains the raw data to be ingested by the system. |
+    | SCHEMA_DIR      | /path/to/data/directory/samples/schemas  | A path to a directory which contains one or more .q files containg schemas of tables to be used by the system. |
+    | SAMPLE_DATA      | /path/to/data/directory/samples/data  | A path to a directory which contains the raw data to be ingested by the system. |
     | TPLOG_DIR       | /path/to/data/directory/tplogs   | A path to a directory to store the tickerplant log files in.                                                   |
     | TPLOG_NAME      | sampleSchema                     | String to prefix to the start of the TP log file.                                                 |
     | HDB_DIR         | /path/to/data/directory/hdb      | A path to a directory to store the data to on disk.                                                            |
@@ -20,7 +20,10 @@ The following configuration steps are required before being able to run the tick
     | GW_PORT         | 5013                             | An available port to run the gateway process on.                                                               |
     | FH_PORT         | 5014                             | An available port to run the feedhandler process on.  
     | ANALYTIC_DIR    | /path/to/repo/x-starter/samples/analytics                             | A path to a directory which contains one or more .q files containing to use on the gateway as REST endpoints.                                                               |
-    | PARALLEL_PORT_RANGE_START    | 5020                             | The starting port value for creating additional parallel processes.                                                               |
+    | PARALLEL_PORT_RANGE_START    | 5020                             | The starting port value for creating additional parallel processes.
+    | FH_TIMER         | Time value in miliseconds                             | A feedhandler timer variable to stimulate automatic data ingestion.    
+    | FH_ANALYTIC_DIR         | path/to/repo/x-starter/samples/data/fh-analytics                             | A path to a directory which contains one or more .q files containing to use on the feedhander for sample data ingestion                                                            |
+
 * Create a `.q` file in `SCHEMA_DIR` containing schemas of tables to be used by the system. Multiple schema files can be used.
 * Create the `TPLOG_DIR`, `HDB_DIR`, and `PROCESS_LOG_DIR` directories.
 * Ensure the `startup.sh` and `shutdown.sh` scripts are executable.
@@ -37,6 +40,7 @@ Starting processes on ports...
   Started RDB   [5011]
   Started HDB   [5012]
   Started GW    [5013]
+  Started FH    [5014]
 ```
 This assumes the `.env` file is in the same directory as the `startup.sh` script. For a file stored in a different location use the `-e` flag:
 ```
@@ -86,6 +90,7 @@ Killed processes:
   RDB    [118667]
   HDB    [118668]
   GW     [118669]
+  FH     [118670]
 ```
 
 ### Monitoring
@@ -97,6 +102,7 @@ user      72685  0.0  0.0  86300  6144 pts/4    Sl+  15:55   0:00 q kdb-tick/tic
 user      72686  0.0  0.0  86164  6144 pts/4    Sl+  15:55   0:00 q kdb-tick/r.q -p 5011 -tplogDir /path/to/data/directory/tplogs -hdbDir /path/to/data/directory/hdb -tpPort :5010 -hdbPort :5012 <b>-procName RDB</b>
 user      72687  0.0  0.0  86300  6016 pts/4    Sl+  15:55   0:00 q /path/to/data/directory/hdb -p 5012 <b>-procName HDB</b>
 user      72688  0.0  0.0 226456  9728 pts/4    Sl+  15:55   0:00 q gw.q -p 5013 -rdbPort 5011 -hdbPort 5012 <b>-procName GW</b>
+user      72689  0.0  0.0  86500  6016 pts/4    Sl+  15:55   0:00 q kdb-tick/fh.q -p 5010 -analyticsDir /path/to/samples/data/fh-analytics/directory/ -fhTimer FH_TIMER -tpPort 6010  <b>-procName FH</b>
 </pre>
 
 ### Failover
