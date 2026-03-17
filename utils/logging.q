@@ -44,7 +44,7 @@
 // Add rollover to timer (if loaded)
 if[count key `.timer;
     .timer.funcs[`loggingRoller]:{[]
-        // If logging file dat is still yesterday, roll to today
+        // If logging file date is still yesterday, roll to today
         if[first[value .log.fileHandle]=.z.d-1;
             .log.rollover[first CLI_ARGS[`procName];.z.d]
         ];
