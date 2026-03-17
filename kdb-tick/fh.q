@@ -6,14 +6,17 @@ system"l utils/main.q";
 //Open connection to TP
 TP_H:hopen`$"::",first CLI_ARGS[`tpPort];
 
-//Ingest sample data
-.log.info["Ingesting sample data"];
-system"l ",(first CLI_ARGS[`sampleData]),"/structured/parse-structured-data.q";
+//Loading FH analytics 
+.log.info["Loading FH analytics"];
 
-//Live data stimulation using timer function. Sample data is upserted to the TP every set interval
+{[x]
+        system each "l ",/:1_/:string .Q.dd[aDir;] each f:key aDir:hsym `$x       
+ }(first CLI_ARGS[`fhDir]);
+
+//Live data stimulation using timer. Sample data is upserted to the TP every set interval
 //On failure, logs error message
-.z.ts:{[] 
-        @[.fh.upsert.data; (::); {.log.error["Upsert failed | ERROR: ", x]}];
+.timer.funcs[`fhUpsert]:{[]
+        @[value[1_.fh.upsert]@\:(::); (::); {.log.error["Upsert failed | ERROR: ", x]}];
         };
 
 //Set timer interval
