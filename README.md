@@ -98,6 +98,19 @@ Within the feedhandler, custom parsers are loaded dynamically from the `fh-analy
 
 Live data publishing is driven by the timer interval, and initialised automatically when the system starts. The interval can also be overriden at runtime using the `fh-timer.sh` script.  
 
+<details>
+<summary>Example .fh.upsert Fuction Format </summary>
+
+```
+.fh.upsert.funcName:{[]
+        //custom logic to publish to TP 
+        neg[TP]("u.upd";tabName; records);
+}
+```
+`.fh.upsert` functions must take no arguments and publish to the TP. Parsing and normalisation are handled by separate custom functions stored within the `fh-analytics` directory. 
+
+</details>
+
 ### Monitoring
 When running the expected behaviour is that 4 separate q processes are running in the background. These can be identified by the `-procName` flag used when starting the individual q sessions. For example:
 <pre>
