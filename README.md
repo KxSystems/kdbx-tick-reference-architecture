@@ -93,6 +93,24 @@ Killed processes:
   FH     [118670]
 ```
 
+### Data Ingestion
+Within the feedhandler, custom parsers are loaded dynamically from the `fh-analytics` directory and executed via the `.fh.upsert` namespace. Each upsert function runs structured data parsing, schema normalisation and TP publishing. 
+
+Live data publishing is driven by the timer interval, and initialised automatically when the system starts. The interval can also be overriden at runtime using the `fh-timer.sh` script.  
+
+<details>
+<summary>Example .fh.upsert Function Format </summary>
+
+```
+.fh.upsert.funcName:{[]
+        //custom logic to publish to TP 
+        neg[TP]("u.upd";tabName; records);
+}
+```
+`.fh.upsert` functions must take no arguments and publish to the TP. Parsing and normalisation are handled by separate custom functions stored within the `fh-analytics` directory. 
+
+</details>
+
 ### Monitoring
 When running the expected behaviour is that 4 separate q processes are running in the background. These can be identified by the `-procName` flag used when starting the individual q sessions. For example:
 <pre>
@@ -203,6 +221,8 @@ qHandlerFunction:{[paramName1;...;paramNameN]
 ```
 </details>
 
+
+
 ## Logging
 ### Prerequisites
 The following modules are required to enable logging:
@@ -274,6 +294,18 @@ Additional logic is added to allow for multiple separately defined functions to 
 </details>
 
 The frequency of the timer is controlled by the individual processes.
+
+## FH Timer Script
+The `fh-timer.sh` script must be sourced to expose two functions for dynamic timer control on the CLI. Both functions establish and disconnect the IPC connection inline, allowing interval adjustments at runtime without restarting the FH process. 
+
+<details>
+ <summary>Avaliable Functions</summary>
+
+**start_fh_timer** - Opens IPC to the FH port and starts the polling interval.
+
+**stop_fh_timer** - Halts upserts without stopping the FH process. The process remains connected tp the TP and ingestion can resume by calling the `start_fh_timer` again. 
+
+</details>
 
 ## Appendix
 ### Directory Trees
@@ -354,3 +386,49 @@ $ cat schemas/second-schema-file.q
 genericTab:([] time:`timespan$(); sym:`symbol$(); c1:(); c2:())
 ```
 </details>
+
+### Sample Data
+The sample data used is a mixture of CSV and PDF files. Custom parsers normalise the sample data to match the TP schema. 
+
+<details>
+<summary>Sample Data Directory Tree</summary>
+
+```
+$ tree /path/to/samples/data/directory/
+.
+├── fh-analytics/
+│   └── custom-parse-file.q
+├── structured/
+│   └── *.csv
+└──  unstructured/
+    └── *.pdf
+
+
+3 directories, 3 files
+```
+</details>
+
+
+<details>
+
+<summary>Sample Files Reference</summary>
+
+The sample files used were sourced from the following locations:
+
+
+**Structured**
+- https://www.kaggle.com/datasets/vitthalmadane/energy-consumption-time-series-dataset/data?select=KwhConsumptionBlower78_1.csv
+
+- https://www.kaggle.com/datasets/prasad22/weather-data
+
+
+**Unstructured**
+- https://www.gov.uk/government/statistics/energy-chapter-1-digest-of-united-kingdom-energy-statistics-dukes
+
+</details>
+
+## TODO
+
+Integrating dashboards with samples
+
+RTE template with samples 
