@@ -99,7 +99,7 @@ Within the feedhandler, custom parsers are loaded dynamically from the `fh-analy
 Live data publishing is driven by the timer interval, and initialised automatically when the system starts. The interval can also be overriden at runtime using the `fh-timer.sh` script.  
 
 <details>
-<summary>Example .fh.upsert Fuction Format </summary>
+<summary>Example .fh.upsert Function Format </summary>
 
 ```
 .fh.upsert.funcName:{[]
