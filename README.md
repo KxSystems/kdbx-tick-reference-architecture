@@ -2,6 +2,11 @@
 Repository for a template for KDB-X tick architecture.
 
 ## Usage
+### Prerequisites
+The following additional KDB-X modules are required to enable logging:
+* https://github.com/KxSystems/logging
+* https://github.com/KxSystems/printf
+
 ### Config
 The following configuration steps are required before being able to run the tick processes:
 * Create a `.env` file within the repo with the following variables defined:
@@ -224,11 +229,6 @@ qHandlerFunction:{[paramName1;...;paramNameN]
 
 
 ## Logging
-### Prerequisites
-The following modules are required to enable logging:
-* https://github.com/KxSystems/logging/tree/main
-* https://github.com/KxSystems/printf
-
 ### Usage
 Logging is enabled on scripts by loading the `utils/logging.q` script. This script initialises the logging module and contains additional custom logging logic.
 
