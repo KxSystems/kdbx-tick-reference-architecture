@@ -22,6 +22,10 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
     CONNECTIONS[x;`alive]:0b;
  };
 
+//Utils functions
+.kxgw.getRDB:{first exec 1?handle from CONNECTIONS where alive, proc like "RDB_*"};
+.kxgw.getHDB:{first exec 1?handle from CONNECTIONS where alive, proc like "HDB_*"};
+
 // REST server config
 .log.info["Initialising REST server"];
 .rest:use`kx.rest;

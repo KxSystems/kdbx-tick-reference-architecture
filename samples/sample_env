@@ -1,0 +1,16 @@
+export ROOT_DIR=$HOME/delivery/x-starter
+export SCHEMA_DIR=$ROOT_DIR/samples/schemas
+export SAMPLE_DATA=$ROOT_DIR/samples/data
+export TPLOG_DIR=$ROOT_DIR/app/tplogs
+export TPLOG_NAME=tpLog
+export HDB_DIR=$ROOT_DIR/app/hdb
+export PROCESS_LOG_DIR=$ROOT_DIR/app/proclogs
+export TICK_PORT=5010
+export RDB_PORT=5011
+export export HDB_PORT=5012
+export GW_PORT=5013
+export FH_PORT=5014
+export ANALYTIC_DIR=$ROOT_DIR/samples/analytics
+export PARALLEL_PORT_RANGE_START=5020
+export FH_TIMER=60000
+export FH_ANALYTIC_DIR=$ROOT_DIR/samples/data/fh-analytics
