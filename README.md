@@ -1,6 +1,20 @@
 # x-starter
 Repository for a template for KDB-X tick architecture.
 
+## Description
+The architecture deployed will consist of multiple q processes:
+- Sample q Feedhandler, processing structured sample data (can be changed), publishing to the tickerplant on a timer
+- A tickerplant with sample schemas
+- A Realtime Database with sample schemas
+- A Historical Database with sample schemas
+- A Gateway with sample analytics querying the RDB and/or HDB
+
+In the documentation below, it explains where to take schemas and sample data and analytics from, and how to change them.
+It also explains how to customise the architecture based on your use case, for example how to deploy more than one RDB/HDB.
+
+### Architecture Diagram
+
+
 ## Usage
 ### Prerequisites
 The following additional KDB-X modules are required to enable logging:
@@ -9,7 +23,7 @@ The following additional KDB-X modules are required to enable logging:
 
 ### Config
 The following configuration steps are required before being able to run the tick processes:
-* Create a `.env` file within the repo with the following variables defined:
+* Create a `.env` file within the repo with the following variables defined, you can find an example under `/samples`:
 
     | Variable        | Example Value                    | Description                                                                                                    |
     |-----------------|----------------------------------|----------------------------------------------------------------------------------------------------------------|
