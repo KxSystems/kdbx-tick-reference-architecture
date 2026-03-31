@@ -13,7 +13,7 @@ In the documentation below, it explains where to take schemas and sample data an
 It also explains how to customise the architecture based on your use case, for example how to deploy more than one RDB/HDB.
 
 ### Architecture Diagram
-
+![kdb-x arch](arch/kdb-x-architecture.png)
 
 ## Usage
 ### Prerequisites
