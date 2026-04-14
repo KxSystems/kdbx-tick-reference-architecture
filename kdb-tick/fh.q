@@ -16,7 +16,7 @@ TP_H:hopen`$"::",first CLI_ARGS[`tpPort];
 //Live data stimulation using timer. Sample data is upserted to the TP every set interval
 //On failure, logs error message
 .timer.funcs[`fhUpsert]:{[]
-        .Q.trp[value[1_.fh.upsert]@\:(::);::; {.log.error["Upsert failed | ERROR: ", x]}];
+        .Q.trp[{value[1_.fh.upsert]@\:(::)};::; {.log.error["Upsert failed | ERROR: ", x]}];
         };
 
 //Timer interval

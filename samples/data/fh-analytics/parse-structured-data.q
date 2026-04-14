@@ -9,7 +9,7 @@ sampleDataDir:getenv `SAMPLE_DATA;
         energyRaw:("IDTF";enlist ",") 0: `$(sampleDataDir,"/structured/",csvFile);
         //Rename columns
         energyRaw:`idx`date`timeWindow`consumption xcol energyRaw;
-        //Update to include time and sym columns
+    //Update to include time and sym columns
         energyTab:update time:(count timeWindow)#.z.n, sym:`$string idx from energyRaw;
         //Remove idx column
         energyTab:delete idx from energyTab;
@@ -33,8 +33,10 @@ sampleDataDir:getenv `SAMPLE_DATA;
 
 //Upsert data to TP
 .fh.upsert.data:{[]
-        neg[TP_H](".u.upd";`energy;value flip (select from .fh.parse.energy["KwhConsumptionBlower78_1.csv"])); 
-        neg[TP_H](".u.upd";`weather;value flip (select from .fh.parse.weather["weather_data.csv"]));
+        e_data:10?select from .fh.parse.energy["KwhConsumptionBlower78_1.csv"];
+        w_data:10?select from .fh.parse.weather["weather_data.csv"];
+        neg[TP_H](".u.upd";`energy;value flip e_data); 
+        neg[TP_H](".u.upd";`weather;value flip w_data);
         //Custom log of rows ingested for each table
-        .log.info["Upsert OK | energy rows:",(string count (select from .fh.parse.energy["KwhConsumptionBlower78_1.csv"])), " | weather rows:", (string count (select from .fh.parse.weather["weather_data.csv"]))];
+        .log.info["Upsert OK | energy rows:",(string count e_data), " | weather rows:", (string count w_data)];
     };

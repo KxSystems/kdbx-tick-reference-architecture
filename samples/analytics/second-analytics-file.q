@@ -26,7 +26,7 @@ hdbREST:{
     (`qFunc; hdbREST);
     (
         `params; 
-        .rest.reg.data[`tab;-11h;1b;`trade;"Table to query"],
+        .rest.reg.data[`tab;-11h;1b;`energy;"Table to query"],
         .rest.reg.data[`d;-14h;0b;.z.d-1;"Date to query"],
         .rest.reg.data[`t1;-17h;0b;00:00;"Lower time bound"],
         .rest.reg.data[`t2;-17h;0b;23:59;"Upper time bound"],
