@@ -3,7 +3,7 @@
 //   /weather/hdb   - query historical weather
 //   /weather/meta  - return meta (schema) for weather
 //
-// These analytics are loaded by REST_GW processes. Each handler builds a
+// These analytics are loaded by the GW. Each handler builds a
 // parse-tree query and delegates to the main GW via sync q-IPC through
 // .restgw.query. The GW uses -30! deferred sync, routes via QR to a QP,
 // and returns the result — same path as q-IPC clients.

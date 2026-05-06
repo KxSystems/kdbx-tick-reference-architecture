@@ -166,16 +166,15 @@ The RTE subscribes to tickerplant tables, runs user-defined enrichment functions
 <summary>Example Enrichment File</summary>
 
 ```q
-// Register a subscription to the `weather` table
-.rte.addSubscription[`weather; `]
-
-// Register an enrichment function that derives a new table
-.rte.addEnrichment[`myEnrichment; `weather]
-
-.rte.myEnrichment:{[data]
+// Define the enrichment function (global — name is passed to .rte.addEnrichment)
+myEnrichment:{[data]
     derived: update heatIndex:... from data;
     .rte.pub[`derivedTable; derived];
  };
+
+// Register the enrichment function and subscribe to the source table
+.rte.addEnrichment[`myEnrichment; `weather]
+.rte.addSubscription[`weather; `]
 ```
 
 </details>
@@ -203,7 +202,7 @@ $ ./scripts/restart.sh RDB_CHAIN_0 -m 1
 To identify running processes:
 
 ```bash
-$ ps aux | grep -procName
+$ ps aux | grep -- -procName
 ```
 
 ### Failover
@@ -319,7 +318,7 @@ qHandlerFunction:{[paramName1; ...; paramNameN]
  };
 ```
 
-Use `.restgw.query` (aliased to `.kxgw.query`) so the same analytics work unchanged if the REST layer is moved to a dedicated process in a future deployment.
+Use `.restgw.query` within analytics handlers — it is aliased to `.kxgw.query` in the GW.
 
 </details>
 
@@ -441,6 +440,7 @@ x-starter/
 │   ├── proclogs/
 │   └── tplogs/
 ├── kdb-x-platform/
+│   ├── client.q
 │   ├── fh.q
 │   ├── gw.q
 │   ├── hdb.q
@@ -465,6 +465,10 @@ x-starter/
 │   ├── e2e-test.q
 │   └── rest-test.q
 └── utils/
+    ├── logging.q
+    ├── main.q
+    ├── rotate-logs.sh
+    └── timer.q
 ```
 
 </details>

@@ -1,7 +1,7 @@
 // REST API test script
-// Exercises the /energy/* and /weather/* endpoints served by the REST_GW processes,
+// Exercises the /energy/* and /weather/* endpoints served by the GW,
 // asserting HTTP status + JSON body shape for success and 404 paths.
-// Usage: source .env && q tests/rest-test.q -gwPort $REST_PORT -procName rest-test
+// Usage: source .env && q tests/rest-test.q -gwPort $GW_PORT -procName rest-test
 //   -gwHost  (optional, default: localhost)
 
 args:.Q.opt .z.x;
@@ -116,9 +116,7 @@ run["unknown endpoint returns 404";
     .t.httpGet["/nonexistent"]];
 
 // ── Concurrent-call sanity check ────────────────────────────────────────
-// Fires N curl clients in parallel, asserts all 200s. Real HTTP concurrency
-// comes from running multiple REST_GWs (SO_REUSEPORT) — scale with
-// `./scripts/scale.sh rest-up N`. Wall-clock is printed for human inspection;
+// Fires N curl clients in parallel, asserts all 200s. Wall-clock is printed for human inspection;
 // a strict "elapsed >= N * baseline" assertion is unreliable since curl fork
 // + TCP overhead dominates the baseline.
 -1 "\n=== Concurrent-call sanity check ===\n";

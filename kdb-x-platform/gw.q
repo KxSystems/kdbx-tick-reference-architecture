@@ -1,7 +1,6 @@
 // Gateway — serves both REST (kx.rest) and q-IPC clients.
-// Analytics files define REST endpoints; handlers call .restgw.query (aliased
-// to .kxgw.query here) so the same analytics work unchanged in Track 2 when
-// REST moves to a dedicated REST_GW process.
+// Analytics files define REST endpoints; handlers call .restgw.query
+// (aliased to .kxgw.query) to route queries through the gateway.
 //
 // CLI args: -p <port> -analyticsDir <dir> -rdbPort <port> [-crdbPort <port...>]
 //           -hdbPort <port...> -procName GW
@@ -69,8 +68,7 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
     ]
  };
 
-// Alias so analytics files (which use .restgw.query) load unchanged in Track 2
-// when REST moves to a dedicated REST_GW process.
+// Alias used by analytics files.
 .restgw.query:.kxgw.query;
 
 // ── REST server ───────────────────────────────────────────────────────────
