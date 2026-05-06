@@ -4,16 +4,16 @@ Repository for a template for KDB-X tick architecture.
 
 ## Description
 
-The architecture deployed will consist of multiple q processes:
+The architecture deployed will consist of the following q processes:
 
-- Sample q Feedhandler, processing structured sample data (can be changed), publishing to the tickerplant on a timer
-- A tickerplant with sample schemas
-- A Realtime Database with sample schemas
-- A Historical Database with sample schemas
-- A Gateway with sample analytics querying the RDB and/or HDB
+- **Tickerplant (TP)** — receives updates from the feedhandler and distributes them to all subscribers
+- **Feedhandler (FH)** — parses structured sample data and publishes to the tickerplant on a timer
+- **Realtime Database (RDB)** — subscribes to the tickerplant and holds today's data in memory; saves to HDB at end of day
+- **Historical Database (HDB)** — stores partitioned on-disk data, reloaded after each end-of-day save
+- **Real-Time Engine (RTE)** — subscribes to the tickerplant, runs enrichment functions, and publishes derived tables back to the tickerplant
+- **Gateway (GW)** — routes queries to the RDB and/or HDB and serves REST endpoints for the analytics defined in `ANALYTIC_DIR`
 
-In the documentation below, it explains where to take schemas and sample data and analytics from, and how to change them.
-It also explains how to customise the architecture based on your use case, for example how to deploy more than one RDB/HDB.
+In the documentation below it explains where to take schemas, sample data, and analytics from and how to change them. It also explains how to customise the architecture based on your use case, for example how to deploy more than one RDB/HDB.
 
 ### Architecture Diagram
 
@@ -23,67 +23,75 @@ It also explains how to customise the architecture based on your use case, for e
 
 ### Prerequisites
 
-The following additional KDB-X modules are required to enable logging:
+The following KDB-X modules are required:
 
 - [logging](https://github.com/KxSystems/logging)
 - [printf](https://github.com/KxSystems/printf)
+- [kx.rest](https://code.kx.com/kdb-x/modules/rest-server/overview.html)
 
 ### Config
 
 The following configuration steps are required before being able to run the tick processes:
 
-- Create a `.env` file within the repo with the following variables defined, you can find an example under `/samples`:
+- Create a `.env` file within the repo with the following variables defined. An example can be found under `samples/sample_env`.
 
-  | Variable                  | Example Value                                    | Description                                                                                                             |
-  | ------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-  | SCHEMA_DIR                | /path/to/data/directory/samples/schemas          | A path to a directory which contains one or more .q files containg schemas of tables to be used by the system.          |
-  | SAMPLE_DATA               | /path/to/data/directory/samples/data             | A path to a directory which contains the raw data to be ingested by the system.                                         |
-  | TPLOG_DIR                 | /path/to/data/directory/tplogs                   | A path to a directory to store the tickerplant log files in.                                                            |
-  | TPLOG_NAME                | sampleSchema                                     | String to prefix to the start of the TP log file.                                                                       |
-  | HDB_DIR                   | /path/to/data/directory/hdb                      | A path to a directory to store the data to on disk.                                                                     |
-  | PROCESS_LOG_DIR           | /path/to/data/directory/proclogs                 | A path to a directory to store process logs in.                                                                         |
-  | TICK_PORT                 | 5010                                             | An available port to run the tickerplant process on.                                                                    |
-  | RDB_PORT                  | 5011                                             | An available port to run the realtime database process on.                                                              |
-  | HDB_PORT                  | 5012                                             | An available port to run the historical database process on.                                                            |
-  | GW_PORT                   | 5013                                             | An available port to run the gateway process on.                                                                        |
-  | FH_PORT                   | 5014                                             | An available port to run the feedhandler process on.                                                                    |
-  | ANALYTIC_DIR              | /path/to/repo/x-starter/samples/analytics        | A path to a directory which contains one or more .q files containing to use on the gateway as REST endpoints.           |
-  | PARALLEL_PORT_RANGE_START | 5020                                             | The starting port value for creating additional parallel processes.                                                     |
-  | FH_TIMER                  | Time value in miliseconds                        | A feedhandler timer variable to stimulate automatic data ingestion.                                                     |
-  | FH_ANALYTIC_DIR           | path/to/repo/x-starter/samples/data/fh-analytics | A path to a directory which contains one or more .q files containing to use on the feedhander for sample data ingestion |
+  | Variable                  | Example Value                                     | Description                                                                                                              |
+  | ------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+  | SCHEMA_DIR                | /path/to/repo/samples/schemas                     | Directory containing one or more `.q` files with table schemas used by the system.                                       |
+  | SAMPLE_DATA               | /path/to/repo/samples/data                        | Directory containing the raw data files ingested by the feedhandler.                                                     |
+  | TPLOG_DIR                 | /path/to/repo/app/tplogs                          | Directory to store tickerplant log files.                                                                                |
+  | TPLOG_NAME                | tpLog                                             | Prefix for the tickerplant log file name.                                                                                |
+  | HDB_DIR                   | /path/to/repo/app/hdb                             | Directory to store on-disk partitioned HDB data.                                                                         |
+  | PROCESS_LOG_DIR           | /path/to/repo/app/proclogs                        | Directory to store per-process log files.                                                                                |
+  | TICK_PORT                 | 5010                                              | Port for the tickerplant process.                                                                                        |
+  | RDB_PORT                  | 5011                                              | Port for the realtime database process.                                                                                  |
+  | HDB_PORT                  | 5012                                              | Port for the historical database process.                                                                                |
+  | GW_PORT                   | 5013                                              | Port for the gateway process (q-IPC and REST).                                                                           |
+  | FH_PORT                   | 5014                                              | Port for the feedhandler process.                                                                                        |
+  | RTE_PORT                  | 5016                                              | Port for the real-time engine process.                                                                                   |
+  | FH_TIMER                  | 60000                                             | Feedhandler publish interval in milliseconds.                                                                            |
+  | FH_ANALYTIC_DIR           | /path/to/repo/samples/data/fh-analytics           | Directory containing feedhandler parser `.q` files.                                                                      |
+  | ANALYTIC_DIR              | /path/to/repo/samples/analytics                   | Directory containing REST endpoint analytics `.q` files loaded by the gateway.                                           |
+  | RTE_ENRICH_FILE           | /path/to/repo/samples/enrichments/enrich-sample.q | Path to the enrichment file loaded by the real-time engine.                                                              |
+  | PARALLEL_PORT_RANGE_START | 5020                                              | Starting port for additional RDB/HDB pairs started with `-m`. Pairs use ports `start+2i` (RDB_CHAIN_i) and `start+2i+1` (HDB_EXTRA_i). |
 
 - Create a `.q` file in `SCHEMA_DIR` containing schemas of tables to be used by the system. Multiple schema files can be used.
-- Create the `TPLOG_DIR`, `HDB_DIR`, and `PROCESS_LOG_DIR` directories.
-- Ensure the `startup.sh` and `shutdown.sh` scripts are executable.
-
-Further examples can be found within the Appendix.
+- Create the `app/tplogs`, `app/hdb`, and `app/proclogs` directories.
+- Ensure scripts under `scripts/` are executable.
 
 #### Directory creation
 
 ```bash
-$ cp samples/sample_env .env && \
+cp samples/sample_env .env && \
 source .env && \
-printenv | grep _DIR | grep x-starter | cut -d '=' -f 2 | xargs -I{} mkdir -p {}
+mkdir -p $TPLOG_DIR $HDB_DIR $PROCESS_LOG_DIR
 ```
 
 ### Start
 
-To run the system simply run the startup script:
+To run the system run the startup script from the project root:
 
 ```bash
-$ cd x-starter && ./startup.sh
-Starting processes on ports...
-  Started TP    [5010]
-  Started RDB   [5011]
-  Started HDB   [5012]
-  Started GW    [5013]
-  Started FH    [5014]
+$ ./scripts/startup.sh
+Starting Tick Reference Architecture...
+  .env:             [.env]
+  Secondaries:      [0]
+  Chained RDBs:     [0]
+
+  Started TP        [5010]
+  Started RDB       [5011]
+  Started HDB       [5012]
+  Started FH        [5014]
+  Started RTE       [5016]
+  Started GW        [5013]
+
+Stack started. Logs: app/proclogs/startup.log
 ```
 
-This assumes the `.env` file is in the same directory as the `startup.sh` script. For a file stored in a different location use the `-e` flag:
+This assumes `.env` is in the project root. For a file stored elsewhere use the `-e` flag:
 
 ```bash
-$ cd x-starter && ./startup.sh -e /path/to/.env
+$ ./scripts/startup.sh -e /path/to/.env
 ```
 
 <details>
@@ -98,50 +106,51 @@ $ cd x-starter && ./startup.sh -e /path/to/.env
   Reference: https://code.kx.com/q/basics/cmdline/#-s-secondary-threads
 
   ```bash
-  $ cd x-starter && ./startup.sh -s 4
+  $ ./scripts/startup.sh -s 4
   ```
 
 - **-m**
 
-  Number of additional RDB and HDB processes to start in parallel. Additional RDBs are started as "chained" which do not carry out any end of day saves or HDB reloads. The gateway will not query the main RDB when `-m` is set.
+  Number of chained RDB replicas (and paired HDB instances) to start for failover. The leader RDB (`RDB`) handles end-of-day saves; each `RDB_CHAIN_i` is a read-only follower. The gateway queries all live RDB and HDB instances.
 
   Defaults to 0.
 
   Reference: https://code.kx.com/q/kb/kdb-tick/#chained-rdbs
 
   ```bash
-  $ cd x-starter &&  ./startup.sh -m 2
+  $ ./scripts/startup.sh -m 1
   ```
 
 </details>
 
 ### Stop
 
-To stop the system run the shutdown script:
+To stop the system run the shutdown script from the project root:
 
 ```bash
-$ cd x-starter && ./shutdown.sh
-Killed processes:
+$ ./scripts/shutdown.sh
+Killing processes:
   TP     [118666]
   RDB    [118667]
   HDB    [118668]
-  GW     [118669]
-  FH     [118670]
+  FH     [118669]
+  RTE    [118670]
+  GW     [118671]
 ```
 
 ### Data Ingestion
 
-Within the feedhandler, custom parsers are loaded dynamically from the `fh-analytics` directory and executed via the `.fh.upsert` namespace. Each upsert function runs structured data parsing, schema normalisation and TP publishing.
+Within the feedhandler, custom parsers are loaded dynamically from the `fh-analytics` directory and executed via the `.fh.upsert` namespace. Each upsert function runs structured data parsing, schema normalisation, and TP publishing.
 
-Live data publishing is driven by the timer interval, and initialised automatically when the system starts. The interval can also be overriden at runtime using the `fh-timer.sh` script.
+Live data publishing is driven by the timer interval and initialised automatically when the system starts. The interval can also be overridden at runtime using the `scripts/fh-timer.sh` script.
 
 <details>
-<summary>Example .fh.upsert Function Format </summary>
+<summary>Example .fh.upsert Function Format</summary>
 
 ```q
 .fh.upsert.funcName:{[]
-        //custom logic to publish to TP
-        neg[TP]("u.upd";tabName; records);
+    // custom logic to publish to TP
+    neg[TP]("u.upd"; tabName; records);
 }
 ```
 
@@ -149,101 +158,141 @@ Live data publishing is driven by the timer interval, and initialised automatica
 
 </details>
 
+### Real-Time Enrichment
+
+The RTE subscribes to tickerplant tables, runs user-defined enrichment functions, and publishes the results as new derived tables back to the tickerplant (so they also appear in the RDB). Enrichment functions are registered at startup from the file set by `RTE_ENRICH_FILE`.
+
+<details>
+<summary>Example Enrichment File</summary>
+
+```q
+// Register a subscription to the `weather` table
+.rte.addSubscription[`weather; `]
+
+// Register an enrichment function that derives a new table
+.rte.addEnrichment[`myEnrichment; `weather]
+
+.rte.myEnrichment:{[data]
+    derived: update heatIndex:... from data;
+    .rte.pub[`derivedTable; derived];
+ };
+```
+
+</details>
+
 ### Monitoring
 
-When running the expected behaviour is that 4 separate q processes are running in the background. These can be identified by the `-procName` flag used when starting the individual q sessions. For example:
+All processes write structured logs to `PROCESS_LOG_DIR` in the format `<procName>_<datetime>.log`. The `scripts/monitor.sh` watchdog script checks whether each process is alive and restarts any that have died.
 
 ```bash
-$ pgrep -af procName
+# Check and restart any dead processes
+$ ./scripts/monitor.sh
 
-72685 q kdb-tick/tick.q -p 5010 -schemaDir /path/to/data/directory/schemas -tplogDir /path/to/data/directory/tplogs -procName TP
-72686 q kdb-tick/r.q -p 5011 -tplogDir /path/to/data/directory/tplogs -hdbDir /path/to/data/directory/hdb -tpPort :5010 -hdbPort :5012 -procName RDB
-72687 q /path/to/data/directory/hdb -p 5012 -procName HDB
-72688 q gw.q -p 5013 -rdbPort 5011 -hdbPort 5012 -procName GW
-72689 q kdb-tick/fh.q -p 5010 -analyticsDir /path/to/samples/data/fh-analytics/directory/ -fhTimer FH_TIMER -tpPort 6010 -procName FH
+# Run as a cron job every minute
+* * * * * cd /path/to/x-starter && ./scripts/monitor.sh -e .env >> app/proclogs/monitor-cron.log 2>&1
+```
+
+To restart a single named process without taking down the whole stack:
+
+```bash
+$ ./scripts/restart.sh GW
+$ ./scripts/restart.sh RTE
+$ ./scripts/restart.sh RDB_CHAIN_0 -m 1
+```
+
+To identify running processes:
+
+```bash
+$ ps aux | grep -procName
 ```
 
 ### Failover
 
-When running multiple RDBs, they will operate with the first RDB (`RDB_MAIN`) acting as a leader and any additional RDBs (`RDB_CHAIN_x`) will start as followers. In this set up only the leader carries out end of day writes and HDB reloads, so in the event that the `RDB_MAIN` fails, the first available `RDB_CHAIN` will be triggered to become the leader. The status of leadership is tracked in the `.u.RDB_CONNECTIONS` table on the tickerplant.
+When running with `-m N`, the first RDB (`RDB`) acts as the leader and any additional `RDB_CHAIN_i` instances start as followers. Only the leader carries out end-of-day saves and HDB reloads. If `RDB` fails, the tickerplant promotes the first available `RDB_CHAIN` to leader.
 
-_Note: If `RDB_MAIN` fails it should NOT be restarted as main and instead a new chained RDB should be started to return back to the desired number of RDB._
+_Note: If the leader RDB fails it should NOT be restarted as leader. Start a new `RDB_CHAIN` to return to the desired replica count._
 
-The gateway will only query processes available on startup, therefore if additional DB processes are started while the gateway is running it will need to be restarted to query all new DB processes.
+The gateway connects to all DB processes on startup. If a process is restarted while the gateway is running, the gateway will reconnect automatically on its next timer tick (every 60 seconds).
 
 ### Querying
 
-The gateway process takes advantage of the [REST module in KDB-X](https://code.kx.com/kdb-x/modules/rest-server/overview.html) to act as a REST server. To access the data in the system there are some default REST API endpoints available, `localhost:GW_PORT/rdb` and `localhost:GW_PORT/HDB`.
+#### q-IPC
+
+The gateway exposes `.kxgw.query[target; query]` for synchronous queries from q clients:
+
+```q
+gwh: hopen `$"::",string GW_PORT
+
+// Query the RDB
+gwh (`.kxgw.query; `rdb; "select from energy")
+
+// Query the HDB
+gwh (`.kxgw.query; `hdb; "select from energy where date=.z.d-1")
+
+// Query both (returns dict with `rdb`hdb keys)
+gwh (`.kxgw.query; `both; "select from energy")
+```
+
+See `samples/analytics/endpoints.q` for further examples.
+
+#### REST
+
+The gateway also serves REST endpoints defined by the analytics files in `ANALYTIC_DIR`. The sample analytics expose the following endpoints:
 
 <details>
 <summary>REST API Reference</summary>
 
-### /rdb
+### /energy/rdb
 
-Query data within the RDB, filtering on the `time` and `sym` columns.
+Query the energy table on the RDB (realtime data).
 
-Input parameters:
-
-| Parameter | Required | Data Type | Default Value | Description |
-|-----------|----------|---------------|---------------|-------------------------------------------------------------|
-| tab | Yes | Symbol (-11h) | energy | Table to query. |
-| t1 | No | Minute (-17h) | 00:00 | Lower time bound. |
-| t2 | No | Minute (-17h) | 23:59 | Upper time bound. |
-| s | No | Symbol (-11h) | ` | Sym to filter for. No value defaults to returning all syms. |
-
-Example Usage
+| Parameter | Required | Type      | Default                    | Description                  |
+|-----------|----------|-----------|----------------------------|------------------------------|
+| t1        | No       | Timespan  | 0D00:00:00.000000000       | Lower time bound             |
+| t2        | No       | Timespan  | 0D23:59:59.999999999       | Upper time bound             |
+| s         | No       | Symbol    | (all)                      | Sym filter (e.g. BLOWER78_1) |
 
 ```bash
-$ curl "localhost:${GW_PORT}/rdb"
-{"code":"400","text":"missing","details":"tab"}
-
-$ curl "localhost:${GW_PORT}/rdb?tab=energy"
-<json object of all energy data in rdb>
-
-$ curl "localhost:${GW_PORT}/rdb?tab=energy&t1=15:34&t2=15:35"
-<json object of energy data in rdb within 15:34 and 15:35>
-
-$ curl "localhost:${GW_PORT}/rdb?tab=weather&t1=15:34&t2=15:35&s=LONDON"
-<json object of weather data in rdb within 15:34 and 15:35 matching sym=`LONDON>
+curl "localhost:${GW_PORT}/energy/rdb"
+curl "localhost:${GW_PORT}/energy/rdb?s=BLOWER78_1"
 ```
 
-### /hdb
+### /energy/hdb
 
-Query data within the HDB, filtering on the `date`, `time`, and `sym` columns.
+Query the energy table on the HDB (historical data).
 
-Input parameters:
-
-| Parameter | Required | Data Type | Default Value | Description |
-|-----------|----------|---------------|---------------|-------------------------------------------------------------|
-| tab | Yes | Symbol (-11h) | energy | Table to query. |
-| d | No | Date (-14h) | .z.d-1 | Date to query. |
-| t1 | No | Minute (-17h) | 00:00 | Lower time bound. |
-| t2 | No | Minute (-17h) | 23:59 | Upper time bound. |
-| s | No | Symbol (-11h) | ` | Sym to filter for. No value defaults to returning all syms. |
-
-Example Usage
+| Parameter | Required | Type      | Default  | Description           |
+|-----------|----------|-----------|----------|-----------------------|
+| d         | Yes      | Date      | .z.d-1   | Partition date        |
+| t1        | No       | Timespan  | 0D00:... | Lower time bound      |
+| t2        | No       | Timespan  | 0D23:... | Upper time bound      |
+| s         | No       | Symbol    | (all)    | Sym filter            |
 
 ```bash
-$ curl "localhost:${GW_PORT}/hdb"
-{"code":"400","text":"missing","details":"tab"}
-
-$ curl "localhost:${GW_PORT}/hdb?tab=energy"
-<json object of all yesterdays energy data in hdb>
-
-$ curl "localhost:${GW_PORT}/hdb?tab=energy&d=2026.02.18&t1=15:34&t2=15:35"
-<json object of energy data in hdb on 18th Feb 2026 within 15:34 and 15:35>
-
-$ curl "localhost:${GW_PORT}/hdb?tab=weather&d=2026.02.18&t1=15:34&t2=15:35&s=LONDON"
-<json object of weather data in hdb on 18th Feb 2026 within 15:34 and 15:35 matching sym=`LONDON>
+curl "localhost:${GW_PORT}/energy/hdb?d=2026.05.06"
 ```
+
+### /energy/meta
+
+Returns the schema of the energy table.
+
+```bash
+curl "localhost:${GW_PORT}/energy/meta"
+```
+
+### /weather/rdb, /weather/hdb, /weather/meta
+
+Same structure as the energy endpoints, applied to the weather table.
+
+| Parameter | Required | Type      | Default  | Description                       |
+|-----------|----------|-----------|----------|-----------------------------------|
+| s         | No       | Symbol    | (all)    | Location sym (e.g. `San Diego`)   |
 
 </details>
 
 #### Adding Endpoints
 
-Custom analytics can be added and exposed as REST endpoints by creating `.q` scripts in the directory set by the `ANALYTIC_DIR` environmental variable. This works through use of the [.rest.register](https://code.kx.com/kdb-x/modules/rest-server/reference.html#restregister) API, which will be applied to the contents of the `.endpoints` namespace, e.g., `.endpoints.rdb` and `.endpoints.hdb`.
-
-Therefore to expose a new endpoint, simply add a new variable to the namespace which follows the formatting of the `.endpoints` namespace.
+Custom analytics can be added and exposed as REST endpoints by creating `.q` scripts in `ANALYTIC_DIR`. Each script defines handler functions and registers them in the `.endpoints` namespace using `.rest.reg.data`.
 
 <details>
 <summary>.endpoints Namespace Format</summary>
@@ -256,20 +305,21 @@ Therefore to expose a new endpoint, simply add a new variable to the namespace w
     (`qFunc; qHandlerFunction);
     (
         `params;
-        .rest.reg.data[`paramName1;paramType;requiredFlag;defaultVal;"description"],
-        ... ,
-        .rest.reg.data[`paramNameN;paramType;requiredFlag;defaultVal;"description"]
+        .rest.reg.data[`paramName1; paramType; requiredFlag; defaultVal; "description"],
+        .rest.reg.data[`paramNameN; paramType; requiredFlag; defaultVal; "description"]
     )
  );
 ```
 
-where `qHandlerFunction` is the q function to run on the given input parameters:
+The handler function receives the parameters as positional arguments:
 
 ```q
-qHandlerFunction:{[paramName1;...;paramNameN]
-    q query logic
-};
+qHandlerFunction:{[paramName1; ...; paramNameN]
+    .restgw.query[`rdb; (?; `myTable; ...; 0b; ())]
+ };
 ```
+
+Use `.restgw.query` (aliased to `.kxgw.query`) so the same analytics work unchanged if the REST layer is moved to a dedicated process in a future deployment.
 
 </details>
 
@@ -277,7 +327,7 @@ qHandlerFunction:{[paramName1;...;paramNameN]
 
 ### Usage
 
-Logging is enabled on scripts by loading the `utils/logging.q` script. This script initialises the logging module and contains additional custom logging logic.
+Logging is enabled on all processes by loading `utils/logging.q` (via `utils/main.q`). This initialises the `kx.log` module and redirects output to a per-process log file.
 
 Default usage documentation can be found at https://github.com/KxSystems/logging/blob/main/docs/reference.md
 
@@ -286,47 +336,44 @@ Default usage documentation can be found at https://github.com/KxSystems/logging
 
 ### .log.procStarted
 
-Used to show the q command that was run to start the current process, prepending the input string to the log line.
+Logs the q command used to start the current process.
 
 ```q
 q) .log.procStarted["Tickerplant"];
-
-2026.02.26D11:35:29.519047911 info PID[<pid>] HOST[<hostname>] Tickerplant started using command:     q kdb-tick/tick.q -p 5010 -schemaDir /path/to/data/directory/schemas -tplogDir /path/to/data/directory/tplogs -procName TP
+2026.05.06D09:07:36.465107038 info PID[71505] HOST[hostname] TP started using command: q kdb-x-platform/tick.q ...
 ```
 
 ### .log.rollover
 
-Used to roll the current processes log file to a new date.
+Rolls the current process log file to a new date.
 
 ```q
-q) .log.rollover["TP";.z.d+1];
+q) .log.rollover["TP"; .z.d+1];
 ```
 
 </details>
 
 ### Default Behaviour
 
-By default the logging module will act in the following manner:
-
-- Process logs saved to the path defined by `PROCESS_LOG_DIR` in the `.env` file.
-- Log file names are in the format of `<procName>_<date>T<time>.log` where `procName` corresponds to the `-procName` flag value used in `startup.sh`.
-- A `startup.log` file is created to log events ran by `startup.sh`.
-- Logs use the `basic` format.
-- All log levels are redirected to the process log files (trace, debug, info, warn, error, fatal).
+- Process logs are saved to `PROCESS_LOG_DIR` in the `.env` file.
+- Log file names follow the format `<procName>_<datetime>.log`.
+- A `startup.log` file is created by `scripts/startup.sh`.
+- All log levels (trace, debug, info, warn, error, fatal) are written to the process log file.
 
 <details>
 <summary>Example Process Log Directory</summary>
 
 ```bash
-$ ll /path/to/data/directory/proclogs
-total 28
-drwxr-xr-x 2 gdanc gdanc 4096 Feb 26 18:36 ./
-drwxr-xr-x 6 gdanc gdanc 4096 Feb 18 15:42 ../
--rw-r--r-- 1 gdanc gdanc  475 Feb 26 18:36 GW_20260226T183617776.log
--rw-r--r-- 1 gdanc gdanc  262 Feb 26 18:36 HDB_20260226T183617776.log
--rw-r--r-- 1 gdanc gdanc  268 Feb 26 18:36 RDB_20260226T183618778.log
--rw-r--r-- 1 gdanc gdanc  519 Feb 26 18:36 TP_20260226T183617776.log
--rw-r--r-- 1 gdanc gdanc  862 Feb 26 18:36 startup.log
+$ ls app/proclogs/
+FH_20260506T090736457.log
+GW_20260506T090736411.log
+HDB_20260506T090736461.log
+HDB_EXTRA_0_20260506T090736518.log
+RDB_20260506T090737390.log
+RDB_CHAIN_0_20260506T090737435.log
+RTE_20260506T090736460.log
+TP_20260506T090736465.log
+startup.log
 ```
 
 </details>
@@ -339,20 +386,15 @@ The `utils/rotate-logs.sh` script deletes old process log and tickerplant log fi
 # Delete proclogs and tplogs older than 7 days (default)
 $ ./utils/rotate-logs.sh
 
-# Use a custom .env file path
-$ ./utils/rotate-logs.sh -e /path/to/.env
-
 # Keep only 3 days of proclogs, 14 days of tplogs
 $ ./utils/rotate-logs.sh --keep-days 3 --tp-keep-days 14
-Deleted 12 proclog file(s) older than 3 days
-Deleted 2 tplog file(s) older than 14 days
 ```
 
 The script preserves `startup.log` regardless of age.
 
 ## Timers
 
-Additional logic is added to allow for multiple separately defined functions to be called on a timer on a process (using `.z.ts`). This is done by adding functions to the `.timer.funcs` dictionary, intialised by `timer.q`. Functions added this way are expected to have null input.
+Additional logic allows multiple separately-defined functions to be called on a single timer (`.z.ts`) per process. Functions are added to the `.timer.funcs` dictionary, initialised by `utils/timer.q`.
 
 <details>
 <summary>Example Timer Function</summary>
@@ -365,20 +407,25 @@ Additional logic is added to allow for multiple separately defined functions to 
 
 </details>
 
-The frequency of the timer is controlled by the individual processes.
-
 ## FH Timer Script
 
-The `fh-timer.sh` script must be sourced to expose two functions for dynamic timer control on the CLI. Both functions establish and disconnect the IPC connection inline, allowing interval adjustments at runtime without restarting the FH process.
+`scripts/fh-timer.sh` must be sourced to expose two functions for dynamic timer control. Both functions open and close an IPC connection inline, allowing interval adjustments at runtime without restarting the FH process.
 
-<details>
- <summary>Avaliable Functions</summary>
+```bash
+source ./scripts/fh-timer.sh
+start_fh_timer   # enable ingest at $FH_TIMER ms intervals
+stop_fh_timer    # pause ingest
+```
 
-**start_fh_timer** - Opens IPC to the FH port and starts the polling interval.
+## Testing
 
-**stop_fh_timer** - Halts upserts without stopping the FH process. The process remains connected tp the TP and ingestion can resume by calling the `start_fh_timer` again.
+An end-to-end test suite is provided at `tests/e2e-test.q`. It covers data ingestion, q-IPC and REST queries, EOD, failover, and operational scripts. Run it from the project root after starting the stack:
 
-</details>
+```bash
+source .env && q tests/e2e-test.q -gwPort $GW_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
+```
+
+Results are written to `app/proclogs/e2e_<datetime>.log` in the same structured format as all other process logs.
 
 ## Appendix
 
@@ -387,17 +434,37 @@ The `fh-timer.sh` script must be sourced to expose two functions for dynamic tim
 <details>
 <summary>Initial Directory Tree</summary>
 
-```bash
-$ tree /path/to/data/directory/
-.
-├── hdb
-├── proclogs
-├── schemas
-│   ├── sample-schema-file.q
-│   └── second-schema-file.q
-└── tplogs
-
-5 directories, 2 files
+```
+x-starter/
+├── app/
+│   ├── hdb/
+│   ├── proclogs/
+│   └── tplogs/
+├── kdb-x-platform/
+│   ├── fh.q
+│   ├── gw.q
+│   ├── hdb.q
+│   ├── r.q
+│   ├── rte.q
+│   ├── tick.q
+│   └── u.q
+├── samples/
+│   ├── analytics/
+│   ├── data/
+│   ├── enrichments/
+│   ├── schemas/
+│   └── sample_env
+├── scripts/
+│   ├── fh-timer.sh
+│   ├── monitor.sh
+│   ├── restart.sh
+│   ├── shutdown.sh
+│   └── startup.sh
+├── tests/
+│   ├── api-test.q
+│   ├── e2e-test.q
+│   └── rest-test.q
+└── utils/
 ```
 
 </details>
@@ -405,58 +472,51 @@ $ tree /path/to/data/directory/
 <details>
 <summary>Directory Tree Containing Data</summary>
 
-```bash
-$ tree /path/to/data/directory/
-.
-├── hdb
-│   ├── 2026.02.18
-│   │   ├── energy
+```
+app/
+├── hdb/
+│   ├── 2026.05.06/
+│   │   ├── energy/
 │   │   │   ├── consumption
 │   │   │   ├── date
 │   │   │   ├── sym
 │   │   │   ├── time
 │   │   │   └── timeWindow
-│   │   └── weather
+│   │   ├── weather/
+│   │   │   ├── dateTime
+│   │   │   ├── humidity
+│   │   │   ├── precipitation
+│   │   │   ├── sym
+│   │   │   ├── temp
+│   │   │   ├── time
+│   │   │   └── windSpeed
+│   │   └── weatherHeatIndex/
 │   │       ├── dateTime
-│   │       ├── humidity
-│   │       ├── precipitation
+│   │       ├── heatIndex
 │   │       ├── sym
-│   │       ├── temp
-│   │       ├── time
-│   │       └── windSpeed
+│   │       └── time
 │   └── sym
-├── proclogs
-│   ├── hdb
-│   ├── rdb
-│   └── tp
-├── schemas
-│   ├── sample-schema-file.q
-│   └── second-schema-file.q
-└── tplogs
-    ├── testSchemaName2026.02.18
-    └── testSchemaName2026.02.19
-
-9 directories, 25 files
+├── proclogs/
+│   ├── GW_<datetime>.log
+│   ├── RDB_<datetime>.log
+│   └── ...
+└── tplogs/
+    └── tpLog<date>
 ```
 
 </details>
 
 ### Schema Files
 
-Note that schemas must be created with the first two columns being `time` and `sym`.
+Schemas must have `time` and `sym` as the first two columns.
 
 <details>
-<summary>Example contents of table schemas spread across multiple files</summary>
+<summary>Example schema file</summary>
 
-```bash
-$ cat schemas/sample-schema-file.q
-
+```q
 energy:([] time:`timespan$(); sym:`symbol$(); date:`date$(); timeWindow:`time$(); consumption:`float$())
 weather:([] time:`timespan$(); sym:`symbol$(); dateTime:`datetime$(); temp:`float$(); humidity:`float$(); precipitation:`float$(); windSpeed:`float$())
-
-$ cat schemas/second-schema-file.q
-
-genericTab:([] time:`timespan$(); sym:`symbol$(); c1:(); c2:())
+weatherHeatIndex:([] time:`timespan$(); sym:`symbol$(); dateTime:`datetime$(); heatIndex:`float$())
 ```
 
 </details>
@@ -468,32 +528,24 @@ The sample data used is a mixture of CSV and PDF files. Custom parsers normalise
 <details>
 <summary>Sample Data Directory Tree</summary>
 
-```bash
-$ tree /path/to/samples/data/directory/
-.
+```
+samples/data/
 ├── fh-analytics/
-│   └── custom-parse-file.q
+│   └── parse-structured-data.q
 ├── structured/
 │   └── *.csv
-└──  unstructured/
+└── unstructured/
     └── *.pdf
-
-
-3 directories, 3 files
 ```
 
 </details>
 
 <details>
-
 <summary>Sample Files Reference</summary>
-
-The sample files used were sourced from the following locations:
 
 **Structured**
 
 - https://www.kaggle.com/datasets/vitthalmadane/energy-consumption-time-series-dataset/data?select=KwhConsumptionBlower78_1.csv
-
 - https://www.kaggle.com/datasets/prasad22/weather-data
 
 **Unstructured**
@@ -504,6 +556,4 @@ The sample files used were sourced from the following locations:
 
 ## TODO
 
-Integrating dashboards with samples
-
-RTE template with samples
+- Integrate dashboards with samples
