@@ -14,17 +14,7 @@ system"l ",first CLI_ARGS[`hdbDir];
     `ok
  };
 
-// Async query executor - called by QP during fan-out (`both target)
-// Evaluates the query and sends result back to caller async
-//  reqID  - guid from GW (passed through)
-//  src    - `rdb or `hdb tag for collectResult
-//  query  - string, projection, or function to eval on this process
-.db.execAsync:{[reqID;src;query]
-    res:@[value; query; {`error`msg!("Query failed";x)}];
-    neg[.z.w] (`.qp.collectResult; reqID; src; res); neg[.z.w][];
- };
-
-// Async message handler - ensure incoming async messages are evaluated (needed for fan-out queries)
+// Evaluates incoming async messages (required for receiving TP upd calls)
 .z.ps:{value x};
 
 // Set timer to run every minute for logging checks

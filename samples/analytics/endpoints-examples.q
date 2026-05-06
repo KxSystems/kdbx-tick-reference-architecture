@@ -1,13 +1,10 @@
-// Sample analytics - demonstrates the .kxgw.query convention for async dispatch
+// q-IPC client examples — demonstrates .kxgw.query usage patterns
 // These are example queries a q client would send to the GW
 
 // Query RDB for data within a time range
 // Usage from q client:
 //   h:hopen `:localhost:5013
 //   h (`.kxgw.query; `rdb; ({[tab;t1;t2] select from tab where time within (t1;t2)}; `energy; 0D15:34:00; 0D15:35:00))
-//
-// The query projection (func;arg1;arg2;...) is sent to a QP worker
-// which executes it against an RDB process: rdbHandle (func;arg1;arg2;...)
 
 // Query HDB for historical data
 // Usage from q client:

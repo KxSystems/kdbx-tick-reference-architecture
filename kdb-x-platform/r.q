@@ -16,17 +16,9 @@ upd:{[t;x]
     t insert x;
  };
 
-/ get the ticker plant and history ports, defaults are 5010,5012
-/.u.x:.z.x,(count .z.x)_(":5010";":5012");
-// 0 == tp port
-// 1 == hdb port
-/TODO: logging/defaults
-/.u.x:raze CLI_ARGS[`tpPort`hdbPort];
 // Handle single vs multiple HDBs. Ports come in bare; we prepend "::" for TCP loopback.
 .u.x:("::",first CLI_ARGS[`tpPort];"::",first CLI_ARGS[`hdbPort]);
 
-/ end of day: save, clear, hdb reload
-/.u.end:{t:tables`.;t@:where `g=attr each t@\:`sym;.Q.hdpf[`$":",.u.x 1;`:.;x;`sym];@[;`sym;`g#] each t;};
 // Only save/reload if main RDB
 .u.end:{
     .log.info["Running .u.end"];
@@ -43,15 +35,8 @@ upd:{[t;x]
     ];
  };
 
-/ init schema and sync up from log file;cd to hdb(so client save can run)
-/.u.rep:{(.[;();:;].)each x;if[null first y;:()];-11!y;system "cd ",1_-10_string first reverse y};
-/ HARDCODE \cd if other than logdir/db
 // Custom DB location
-/TODO: logging for tplog replay
 .u.rep:{(.[;();:;].)each x;if[null first y;:()];-11!y;system "cd ",first CLI_ARGS[`hdbDir]};
-
-/ connect to ticker plant for (schema;(logcount;log))
-/.u.rep .(hopen `$":",.u.x 0)"(.u.sub[`;`];`.u `i`L)";
 
 // TP handle - tracked for reconnection
 TP_H:0N;
@@ -112,17 +97,7 @@ if[not .rdb.connectTPWithRetry[10];
     ];
  };
 
-// Async query executor - called by QP during fan-out (`both target)
-// Evaluates the query and sends result back to caller async
-//  reqID  - guid from GW (passed through)
-//  src    - `rdb or `hdb tag for collectResult
-//  query  - string, projection, or function to eval on this process
-.db.execAsync:{[reqID;src;query]
-    res:@[value; query; {`error`msg!("Query failed";x)}];
-    neg[.z.w] (`.qp.collectResult; reqID; src; res); neg[.z.w][];
- };
-
-// Async message handler - ensure incoming async messages are evaluated (needed for fan-out queries)
+// Evaluates incoming async messages (required for receiving TP upd calls)
 .z.ps:{value x};
 
 // Set timer for reconnection and logging checks

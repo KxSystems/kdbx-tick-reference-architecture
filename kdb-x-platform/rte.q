@@ -13,8 +13,8 @@ system"l utils/main.q";
 TP_H:0N;
 
 // Mapping dictionaries
-.rte.enrichmentDict: ()!(); /enrichment function -> table name
-.rte.subscriptions: ()!(); /table -> syms to subscribe to from TP
+.rte.enrichmentDict: ()!(); // enrichment function -> table name
+.rte.subscriptions: ()!(); // table -> syms to subscribe to from TP
 
 // Mapping helpers
 // Add a subscription for table/syms 
@@ -92,7 +92,7 @@ TP_H:0N;
 
 // Load enrichment file
 // Enrichment file will define enrichment functions:
-// sampleEnrich: {[x] //do some enrichment to x; .rte.publish[enrichedTableName;enrichedData]};
+// sampleEnrich:{[data] // do some enrichment to data; .rte.pub[enrichedTableName;enrichedData]};
 // Register the enrichment function and subscriptions for target table:
 // .rte.addEnrichment[`sampleEnrich;`targetTable];
 // .rte.addSubscription[`targetTable;`];
@@ -126,7 +126,7 @@ upd:{[t;x]
         .log.warn[("No enrichment function registered for table [%s]"; string t)];
         :()
         ];
-    enrichmentFuncs: where .rte.enrichmentDict = t; /lookup enrichment functions for table
+    enrichmentFuncs: where .rte.enrichmentDict = t; // lookup enrichment functions for table
     .log.debug[("Enrichment functions for table [%s]: [%s]"; string[t]; ", " sv string enrichmentFuncs)];
     {[f;t;x]
         .log.debug[("Running enrichment function [%s] for table [%s]"; string f; string t)];
@@ -150,7 +150,7 @@ upd:{[t;x]
 .timer.funcs[`gc]:{[] .Q.gc[]};
 
 // ── Disconnect hook ─────────────────────────────────────────────────────
-/ToDo: why not attempt reconnect here?
+// TODO: why not attempt reconnect here?
 .z.pc:{[h]
     if[h~TP_H;
         .log.warn["Lost connection to TP"];

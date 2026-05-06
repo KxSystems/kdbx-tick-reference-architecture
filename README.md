@@ -232,7 +232,7 @@ gwh (`.kxgw.query; `hdb; "select from energy where date=.z.d-1")
 gwh (`.kxgw.query; `both; "select from energy")
 ```
 
-See `samples/analytics/endpoints.q` for further examples.
+See `samples/analytics/endpoints-examples.q` for further examples.
 
 #### REST
 
