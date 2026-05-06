@@ -1,42 +1,42 @@
-//Sample script for parsing in sample data to the FH. 
+// Sample script for parsing in sample data to the FH.
 
-//Get sample data directory
+// Get sample data directory
 sampleDataDir:getenv `SAMPLE_DATA;
 
-//Ingest Energy data from csv file
+// Ingest Energy data from csv file
 .fh.parse.energy:{[csvFile]
-        //Load CSV
+        // Load CSV
         energyRaw:("IDTF";enlist ",") 0: `$(sampleDataDir,"/structured/",csvFile);
-        //Rename columns
+        // Rename columns
         energyRaw:`idx`date`timeWindow`consumption xcol energyRaw;
-    //Update to include time and sym columns
+        // Update to include time and sym columns
         energyTab:update time:(count timeWindow)#.z.n, sym:`$string idx from energyRaw;
-        //Remove idx column
+        // Remove idx column
         energyTab:delete idx from energyTab;
-        //Reorder cols to match TP schema
+        // Reorder cols to match TP schema
         `time`sym`date`timeWindow`consumption xcols energyTab
     };
 
-//Ingest Weather data from csv file
+// Ingest Weather data from csv file
 .fh.parse.weather:{[csvFile]
-        //Load CSV
+        // Load CSV
         weatherRaw:("SZFFFF";enlist ",") 0: `$(sampleDataDir,"/structured/",csvFile);
-        //Rename columns
+        // Rename columns
         weatherRaw:`location`dateTime`temp`humidity`precipitation`windSpeed xcol weatherRaw;
-        //Update to include time and sym columns
+        // Update to include time and sym columns
         weatherTab:update time:(count dateTime)#.z.n, sym:location from weatherRaw;
-        //Delete location
+        // Delete location
         weatherTab:delete location from weatherTab;
-        //Reorder cols to match TP schema
+        // Reorder cols to match TP schema
         `time`sym`dateTime`temp`humidity`precipitation`windSpeed xcols weatherTab
     };
 
-//Upsert data to TP
+// Upsert data to TP
 .fh.upsert.data:{[]
-        e_data:10?select from .fh.parse.energy["KwhConsumptionBlower78_1.csv"];
-        w_data:10?select from .fh.parse.weather["weather_data.csv"];
-        neg[TP_H](".u.upd";`energy;value flip e_data); 
-        neg[TP_H](".u.upd";`weather;value flip w_data);
-        //Custom log of rows ingested for each table
-        .log.info["Upsert OK | energy rows:",(string count e_data), " | weather rows:", (string count w_data)];
+        eData:10?select from .fh.parse.energy["KwhConsumptionBlower78_1.csv"];
+        wData:10?select from .fh.parse.weather["weather_data.csv"];
+        neg[TP_H](".u.upd";`energy;value flip eData);
+        neg[TP_H](".u.upd";`weather;value flip wData);
+        // Custom log of rows ingested for each table
+        .log.info["Upsert OK | energy rows:",(string count eData), " | weather rows:", (string count wData)];
     };

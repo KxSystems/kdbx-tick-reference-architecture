@@ -10,6 +10,5 @@
 // set \t in respective scripts
 
 // Example function definitions
-/
-.timer.funcs[`func1]:{[] show .z.p};
-.timer.funcs[`func2]:{[] show .z.t;};
+// .timer.funcs[`func1]:{[] show .z.p};
+// .timer.funcs[`func2]:{[] show .z.t;};

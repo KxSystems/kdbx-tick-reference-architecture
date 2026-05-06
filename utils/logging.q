@@ -15,7 +15,7 @@
     timeStr:ssr[;;""]/[string dt;(".";":")];
     fp:hsym `$getenv[`PROCESS_LOG_DIR],"/",proc,"_",timeStr,".log";
     // Remove default output to stderr/stdout (1/2) and replace with log file
-    /TODO: review this method
+    // TODO: review this method
     .log.remove[1;`trace`debug`info`warn];
     .log.remove[2;`error`fatal];
     // Open handle and add custom file to log sinks
