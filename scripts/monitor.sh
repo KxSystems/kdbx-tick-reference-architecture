@@ -35,7 +35,7 @@ done
 ALL_HDB_PORTS=($HDB_PORT ${HDB_EXTRA_PORTS[*]})
 
 is_alive() {
-  ps aux | grep "q.*-procName ${1}\b" | grep -v grep > /dev/null 2>&1
+  pgrep -af "q.*-procName ${1}\b" > /dev/null 2>&1
 }
 
 restarts=0

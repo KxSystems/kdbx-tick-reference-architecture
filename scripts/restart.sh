@@ -51,7 +51,7 @@ ALL_HDB_PORTS=($HDB_PORT ${HDB_EXTRA_PORTS[*]})
 kill_proc() {
   local pattern=$1
   local pids
-  pids=$(ps aux | grep "q.*-procName ${pattern}\b" | grep -v grep | awk '{print $2}')
+  pids=$(pgrep -af "q.*-procName ${pattern}\b" | awk '{print $1}')
   if [ -n "$pids" ]; then
     echo "  Killing $pattern: $pids"
     echo "$pids" | xargs kill -9 2>/dev/null

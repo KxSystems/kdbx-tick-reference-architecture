@@ -39,7 +39,7 @@ FH_PORT: "I"$first CLI_ARGS[`fhPort];
 
 // Find pid of a q process by exact procName (no partial matches like RDB_CHAIN).
 .t.findPid:{[name]
-    first system "ps aux | grep -v grep | grep -P 'q.*-procName ",name,"(\\s|$)' | awk '{print $2}'"
+    first system "pgrep -af 'q.*-procName ",name,"(\\s|$)' | awk '{print $1}'"
  };
 
 // Safe pid cast — returns 0Ni on empty string or cast failure.

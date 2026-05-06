@@ -202,7 +202,7 @@ $ ./scripts/restart.sh RDB_CHAIN_0 -m 1
 To identify running processes:
 
 ```bash
-$ ps aux | grep -- -procName
+$ pgrep -af -- -procName
 ```
 
 ### Failover
@@ -385,6 +385,8 @@ The default log level is `info`. It can be overridden per-process in two ways:
 |--------|---------|-------|
 | Env var `LOG_LEVEL` in `.env` | `export LOG_LEVEL=debug` | All processes launched from that shell |
 | CLI arg `-logLevel` | `q kdb-x-platform/rte.q ... -logLevel debug ...` | One process (takes precedence over env) |
+
+`samples/sample_env` includes `export LOG_LEVEL=info`; change it there to set a different default for the whole stack.
 
 Accepted values: `trace`, `debug`, `info`, `warn`, `error`, `fatal`. Anything else logs a `warn` on startup and the level stays at `info`. When the effective level is not `info`, the process logs `Log level set to [<level>]` as its first info line.
 
