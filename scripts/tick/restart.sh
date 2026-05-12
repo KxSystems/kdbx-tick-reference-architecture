@@ -3,20 +3,20 @@
 # Restart a specific process without taking down the whole stack.
 # Run from the project root directory.
 #
-# Usage: ./scripts/restart.sh <procName> [-e envFile] [-s secondaries] [-m chainedRdbs]
+# Usage: ./scripts/tick/restart.sh <procName> [-e envFile] [-s secondaries] [-m chainedRdbs]
 #
 # procName: TP | RDB | RDB_CHAIN_<N> | HDB | HDB_EXTRA_<N> | FH | RTE | GW
 #
 # Examples:
-#   ./scripts/restart.sh GW
-#   ./scripts/restart.sh RTE
-#   ./scripts/restart.sh RDB_CHAIN_0 -m 2
+#   ./scripts/tick/restart.sh GW
+#   ./scripts/tick/restart.sh RTE
+#   ./scripts/tick/restart.sh RDB_CHAIN_0 -m 2
 
 proc_name=$1
 shift
 
 if [ -z "$proc_name" ]; then
-  printf "Usage: ./scripts/restart.sh <procName> [-e envFile] [-s secondaries] [-m chainedRdbs]\n"
+  printf "Usage: ./scripts/tick/restart.sh <procName> [-e envFile] [-s secondaries] [-m chainedRdbs]\n"
   exit 1
 fi
 

@@ -3,7 +3,7 @@
 # Start all processes for the Tick Reference Architecture.
 # Run from the project root directory.
 #
-# Usage: ./scripts/startup.sh [-e envFile] [-s secondaries] [-m chainedRdbs]
+# Usage: ./scripts/tick/startup.sh [-e envFile] [-s secondaries] [-m chainedRdbs]
 #   -e  Path to .env file (default: .env)
 #   -s  Secondary threads per process (default: 0)
 #   -m  Number of chained RDB replicas for failover (default: 0)
@@ -14,7 +14,7 @@ s_flag=0
 m_flag=0
 
 print_usage() {
-  printf "Usage: ./scripts/startup.sh [-e envFile] [-s secondaries] [-m chainedRdbs]\n"
+  printf "Usage: ./scripts/tick/startup.sh [-e envFile] [-s secondaries] [-m chainedRdbs]\n"
   printf "  -e  Path to .env file (default: .env)\n"
   printf "  -s  Secondary threads per process (default: 0)\n"
   printf "  -m  Number of chained RDB replicas for failover (default: 0)\n"

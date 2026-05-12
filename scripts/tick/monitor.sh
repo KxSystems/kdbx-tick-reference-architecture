@@ -4,7 +4,7 @@
 # Designed to run via cron (e.g. */1 * * * *) or manually.
 #
 # Usage:
-#   ./scripts/monitor.sh [-e envFile] [-s secondaries] [-m chainedRdbs]
+#   ./scripts/tick/monitor.sh [-e envFile] [-s secondaries] [-m chainedRdbs]
 
 e_flag=".env"
 s_flag=0
