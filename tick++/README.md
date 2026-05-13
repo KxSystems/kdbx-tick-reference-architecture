@@ -1,6 +1,6 @@
-# Tick Reference Architecture
+# Tick++ Reference Architecture
 
-A template for KDB-X base tick architecture.
+A template for KDB-X tick architecture with additional layers to exend base tick configuration.
 
 ## Description
 
@@ -53,6 +53,7 @@ The following configuration steps are required before being able to run the tick
   | FH_ANALYTIC_DIR           | /path/to/repo/samples/data/fh-analytics           | Directory containing feedhandler parser `.q` files.                                                                      |
   | ANALYTIC_DIR              | /path/to/repo/samples/analytics                   | Directory containing REST endpoint analytics `.q` files loaded by the gateway.                                           |
   | RTE_ENRICH_FILE           | /path/to/repo/samples/enrichments/enrich-sample.q | Path to the enrichment file loaded by the real-time engine.                                                              |
+  | PARALLEL_PORT_RANGE_START | 5020                                              | Starting port for additional RDB/HDB pairs started with `-m`. Pairs use ports `start+2i` (RDB_CHAIN_i) and `start+2i+1` (HDB_EXTRA_i). |
 
 - Create a `.q` file in `SCHEMA_DIR` containing schemas of tables to be used by the system. Multiple schema files can be used.
 - Create the `app/tplogs`, `app/hdb`, and `app/proclogs` directories.
@@ -75,6 +76,7 @@ $ ./tick/scripts/startup.sh
 Starting Tick Reference Architecture...
   .env:             [.env]
   Secondaries:      [0]
+  Chained RDBs:     [0]
 
   Started TP        [5010]
   Started RDB       [5011]
@@ -105,6 +107,18 @@ $ ./tick/scripts/startup.sh -e /path/to/.env
 
   ```bash
   $ ./tick/scripts/startup.sh -s 4
+  ```
+
+- **-m**
+
+  Number of chained RDB replicas (and paired HDB instances) to start for failover. The leader RDB (`RDB`) handles end-of-day saves; each `RDB_CHAIN_i` is a read-only follower. The gateway queries all live RDB and HDB instances.
+
+  Defaults to 0.
+
+  Reference: https://code.kx.com/q/kb/kdb-tick/#chained-rdbs
+
+  ```bash
+  $ ./tick/scripts/startup.sh -m 1
   ```
 
 </details>
@@ -182,6 +196,7 @@ To restart a single named process without taking down the whole stack:
 ```bash
 $ ./tick/scripts/restart.sh GW
 $ ./tick/scripts/restart.sh RTE
+$ ./tick/scripts/restart.sh RDB_CHAIN_0 -m 1
 ```
 
 To identify running processes:
@@ -190,7 +205,13 @@ To identify running processes:
 $ pgrep -af -- -procName
 ```
 
-The gateway connects to the RDB and HDB on startup. If a process is restarted while the gateway is running, the gateway will reconnect automatically on its next timer tick (every 60 seconds).
+### Failover
+
+When running with `-m N`, the first RDB (`RDB`) acts as the leader and any additional `RDB_CHAIN_i` instances start as followers. Only the leader carries out end-of-day saves and HDB reloads. If `RDB` fails, the tickerplant promotes the first available `RDB_CHAIN` to leader.
+
+_Note: If the leader RDB fails it should NOT be restarted as leader. Start a new `RDB_CHAIN` to return to the desired replica count._
+
+The gateway connects to all DB processes on startup. If a process is restarted while the gateway is running, the gateway will reconnect automatically on its next timer tick (every 60 seconds).
 
 ### Querying
 
@@ -318,7 +339,7 @@ Logs the q command used to start the current process.
 
 ```q
 q) .log.procStarted["Tickerplant"];
-2026.05.06D09:07:36.465107038 info PID[71505] HOST[hostname] TP started using command: q tick/tick/tick.q ...
+2026.05.06D09:07:36.465107038 info PID[71505] HOST[hostname] TP started using command: q kdb-x-platform/tick.q ...
 ```
 
 ### .log.rollover
@@ -346,7 +367,9 @@ $ ls app/proclogs/
 FH_20260506T090736457.log
 GW_20260506T090736411.log
 HDB_20260506T090736461.log
+HDB_EXTRA_0_20260506T090736518.log
 RDB_20260506T090737390.log
+RDB_CHAIN_0_20260506T090737435.log
 RTE_20260506T090736460.log
 TP_20260506T090736465.log
 startup.log
@@ -361,7 +384,7 @@ The default log level is `info`. It can be overridden per-process in two ways:
 | Method | Example | Scope |
 |--------|---------|-------|
 | Env var `LOG_LEVEL` in `.env` | `export LOG_LEVEL=debug` | All processes launched from that shell |
-| CLI arg `-logLevel` | `q tick/tick/rte.q ... -logLevel debug ...` | One process (takes precedence over env) |
+| CLI arg `-logLevel` | `q kdb-x-platform/rte.q ... -logLevel debug ...` | One process (takes precedence over env) |
 
 `samples/sample_env` includes `export LOG_LEVEL=info`; change it there to set a different default for the whole stack.
 
@@ -408,7 +431,7 @@ stop_fh_timer    # pause ingest
 
 ## Testing
 
-An end-to-end test suite is provided at `tests/e2e-test.q`. It covers data ingestion, q-IPC and REST queries, EOD, and operational scripts. Run it from the project root after starting the stack:
+An end-to-end test suite is provided at `tests/e2e-test.q`. It covers data ingestion, q-IPC and REST queries, EOD, failover, and operational scripts. Run it from the project root after starting the stack:
 
 ```bash
 source .env && q tick/tests/e2e-test.q -gwPort $GW_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
@@ -435,33 +458,44 @@ kdbx-tick-reference-architecture/
 │   ├── enrichments/
 │   ├── schemas/
 │   └── sample_env
-├── tick/
+├── scalable-tick++/
 │   ├── README.md
-│   ├── scripts/
-│   │   ├── fh-timer.sh
-│   │   ├── monitor.sh
-│   │   ├── restart.sh
-│   │   ├── shutdown.sh
-│   │   └── startup.sh
-│   ├── tests/
-│   │   ├── api-test.q
-│   │   ├── e2e-test.q
-│   │   └── rest-test.q
-│   ├── tick/
+│   ├── scalable-tick++/
+│   │   ├── batch.q
 │   │   ├── client.q
 │   │   ├── fh.q
 │   │   ├── gw.q
 │   │   ├── hdb.q
-│   │   ├── rdb.q
+│   │   ├── qp.q
+│   │   ├── qr.q
+│   │   ├── r.q
+│   │   ├── rest-gw.q
 │   │   ├── rte.q
 │   │   ├── tick.q
 │   │   └── u.q
+│   ├── scripts/
+│   │   ├── backfill.sh
+│   │   ├── batch-load.sh
+│   │   ├── fh-timer.sh
+│   │   ├── monitor.sh
+│   │   ├── reload-hdb.sh
+│   │   ├── restart.sh
+│   │   ├── rotate-logs.sh
+│   │   ├── scale.sh
+│   │   ├── shutdown.sh
+│   │   └── startup.sh
+│   ├── tests/
+│   │   ├── api-test.q
+│   │   ├── client.q
+│   │   ├── load-test.sh
+│   │   └── rest-test.q
 │   └── utils/
 │       ├── logging.q
 │       ├── main.q
+│       ├── reload-hdb-helper.q
 │       ├── rotate-logs.sh
 │       └── timer.q
-└── tick++/
+└── tick/
     ├── README.md
     ├── scripts/
     │   ├── fh-timer.sh
@@ -478,7 +512,7 @@ kdbx-tick-reference-architecture/
     │   ├── fh.q
     │   ├── gw.q
     │   ├── hdb.q
-    │   ├── rdb.q
+    │   ├── r.q
     │   ├── rte.q
     │   ├── tick.q
     │   └── u.q
