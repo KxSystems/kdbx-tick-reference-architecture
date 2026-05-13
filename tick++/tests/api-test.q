@@ -1,6 +1,6 @@
 // GW query test script — Track 1 (Tick Reference Architecture)
 // Tests .kxgw.query against rdb, hdb, and both targets via the GW.
-// Usage: source .env && q tick/tests/api-test.q -gwPort $GW_PORT -procName api-test
+// Usage: source .env && q tick++/tests/api-test.q -gwPort $GW_PORT -procName api-test
 
 args:.Q.opt .z.x;
 h:@[hopen; `$"::",first args`gwPort; {-2 "Failed to connect to GW: ",x; exit 1}];

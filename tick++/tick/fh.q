@@ -1,10 +1,22 @@
-//Load utility scripts
-system"l tick/utils/main.q";
+// tick++/tick/fh.q - Feedhandler Process
+//
+// q tick++/tick/fh.q -p $FH_PORT -tpPort $TICK_PORT -fhDir $FH_ANALYTIC_DIR \
+//                    -fhTimer $FH_TIMER -procName FH
+//
+// Connects to the Tickerplant with exponential-backoff retry, loads every `.q` analytic file
+// from `-fhDir` (each expected to populate the `.fh.upsert` namespace), and pushes a batch
+// from each registered upsert to the TP on every timer tick.
+
+system"l tick++/utils/main.q";
 
 .log.info["Initialising FH"];
 
-// Open connection to TP with retry + exponential backoff + jitter
-// Handles TCP backlog exhaustion when multiple processes start simultaneously
+// @desc Open a TP connection with exponential backoff + jitter, fatal-exiting after `maxRetries`
+// Handles TCP backlog exhaustion when multiple processes start simultaneously.
+//
+// @param maxRetries  {long}    Maximum number of connection attempts
+//
+// @return            {int}     Open TP handle
 .fh.connectTPWithRetry:{[maxRetries]
     i:0;
     h:0N;
@@ -19,23 +31,26 @@ system"l tick/utils/main.q";
     ];
     if[null h; .log.fatal["Failed to connect to TP after ",string[maxRetries]," attempts — exiting"]; exit 1];
     h
- };
+    };
+
+// @desc Tickerplant handle — established with up to 10 retry attempts at startup
 TP_H:.fh.connectTPWithRetry[10];
 
-//Loading FH analytics 
+// Load every `.q` file under `-fhDir`. Each is expected to register one or more
+// `.fh.upsert.<name>` functions which the timer dispatch below invokes.
 .log.info["Loading FH analytics"];
-
 {[x]
-        system each "l ",/:1_/:string .Q.dd[aDir;] each f:key aDir:hsym `$x       
- }(first CLI_ARGS[`fhDir]);
+    system each "l ",/:1_/:string .Q.dd[aDir;] each f:key aDir:hsym `$x
+    }(first CLI_ARGS[`fhDir]);
 
-//Live data stimulation using timer. Sample data is upserted to the TP every set interval
-//On failure, logs error message
+// @desc Timer dispatch — invokes every registered `.fh.upsert.*` function once per tick
+// Each upsert is responsible for publishing its own batch to the TP. Errors are caught
+// per-upsert via `.Q.trp` so a failure in one upsert does not abort the others.
 .timer.funcs[`fhUpsert]:{[]
-        .Q.trp[{value[1_.fh.upsert]@\:(::)};::; {.log.error["Upsert failed | ERROR: ", x]}];
-        };
+    .Q.trp[{value[1_.fh.upsert]@\:(::)};::; {.log.error["Upsert failed | ERROR: ", x]}];
+    };
 
-//Timer interval
+// Activate the timer at the configured interval (ms)
 system"t ",first CLI_ARGS[`fhTimer];
 .log.info[enlist["Timer interval set to every [%s] ms"],(CLI_ARGS[`fhTimer])];
 

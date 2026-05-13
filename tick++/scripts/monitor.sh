@@ -4,7 +4,7 @@
 # Designed to run via cron (e.g. */1 * * * *) or manually.
 #
 # Usage:
-#   ./tick/scripts/monitor.sh [-e envFile] [-s secondaries] [-m chainedRdbs]
+#   ./tick++/scripts/monitor.sh [-e envFile] [-s secondaries] [-m chainedRdbs]
 
 e_flag=".env"
 s_flag=0
@@ -55,14 +55,14 @@ check_proc() {
 # ── Core processes ────────────────────────────────────────────────────────
 
 check_proc "TP" || {
-  q tick/tick/tick.q -p $TICK_PORT -s $s_flag \
+  q tick++/tick/tick.q -p $TICK_PORT -s $s_flag \
     -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR \
     -procName TP < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
   echo "[$ts]         Started TP [$TICK_PORT]"
 }
 
 check_proc "RDB" || {
-  q tick/tick/r.q -p $RDB_PORT -s $s_flag \
+  q tick++/tick/rdb.q -p $RDB_PORT -s $s_flag \
     -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
     -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
     -procName RDB < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
@@ -71,7 +71,7 @@ check_proc "RDB" || {
 
 for ((i=0; i<m_flag; i++)); do
   check_proc "RDB_CHAIN_$i" || {
-    q tick/tick/r.q -p ${RDB_CHAIN_PORTS[$i]} -s $s_flag \
+    q tick++/tick/rdb.q -p ${RDB_CHAIN_PORTS[$i]} -s $s_flag \
       -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
       -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
       -procName RDB_CHAIN_$i < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
@@ -80,7 +80,7 @@ for ((i=0; i<m_flag; i++)); do
 done
 
 check_proc "HDB" || {
-  q tick/tick/hdb.q -p $HDB_PORT -s $s_flag \
+  q tick++/tick/hdb.q -p $HDB_PORT -s $s_flag \
     -hdbDir $HDB_DIR \
     -procName HDB < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
   echo "[$ts]         Started HDB [$HDB_PORT]"
@@ -88,7 +88,7 @@ check_proc "HDB" || {
 
 for ((i=0; i<m_flag; i++)); do
   check_proc "HDB_EXTRA_$i" || {
-    q tick/tick/hdb.q -p ${HDB_EXTRA_PORTS[$i]} -s $s_flag \
+    q tick++/tick/hdb.q -p ${HDB_EXTRA_PORTS[$i]} -s $s_flag \
       -hdbDir $HDB_DIR \
       -procName HDB_EXTRA_$i < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
     echo "[$ts]         Started HDB_EXTRA_$i [${HDB_EXTRA_PORTS[$i]}]"
@@ -96,7 +96,7 @@ for ((i=0; i<m_flag; i++)); do
 done
 
 check_proc "FH" || {
-  q tick/tick/fh.q -p $FH_PORT -s $s_flag \
+  q tick++/tick/fh.q -p $FH_PORT -s $s_flag \
     -fhDir $FH_ANALYTIC_DIR -fhTimer $FH_TIMER \
     -tpPort $TICK_PORT \
     -procName FH < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
@@ -104,7 +104,7 @@ check_proc "FH" || {
 }
 
 check_proc "RTE" || {
-  q tick/tick/rte.q -p $RTE_PORT -s $s_flag \
+  q tick++/tick/rte.q -p $RTE_PORT -s $s_flag \
     -enrichFile $RTE_ENRICH_FILE \
     -tpPort $TICK_PORT \
     -procName RTE < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
@@ -112,7 +112,7 @@ check_proc "RTE" || {
 }
 
 check_proc "GW" || {
-  q tick/tick/gw.q -p $GW_PORT -s $s_flag \
+  q tick++/tick/gw.q -p $GW_PORT -s $s_flag \
     -rdbPort $RDB_PORT \
     -crdbPort ${RDB_CHAIN_PORTS[*]} \
     -hdbPort ${ALL_HDB_PORTS[*]} \
