@@ -1,40 +1,61 @@
 #!/bin/bash
 
-# Restart a specific process without taking down the whole stack.
-# Run from the project root directory.
+# Restart a specific process without taking down the whole stack
+# Run from the project root directory
 #
-# Usage: ./tick/scripts/restart.sh <procName> [-e envFile] [-s secondaries]
+# Usage: ./tick/scripts/restart.sh <procName> [-s secondaries]
 #
 # procName: TP | RDB | HDB | FH | RTE | GW
 #
 # Examples:
 #   ./tick/scripts/restart.sh GW
 #   ./tick/scripts/restart.sh RTE
+#
+# All configuration is hardcoded below — keep in sync with tick/scripts/startup.sh
 
+#################
+# Configuration #
+#################
+TPLOG_DIR="app/tplogs"
+HDB_DIR="app/hdb"
+PROCESS_LOG_DIR="app/proclogs"
+
+SCHEMA_DIR="samples/schemas"
+ANALYTIC_DIR="samples/analytics"
+
+TPLOG_NAME="tpLog"
+LOG_LEVEL="info"
+
+TICK_PORT=5010
+RDB_PORT=5011
+HDB_PORT=5012
+GW_PORT=5013
+FH_PORT=5014
+RTE_PORT=5016
+
+FH_TIMER=60000
+
+export SCHEMA_DIR TPLOG_NAME LOG_LEVEL
+
+###############
+# CLI-parsing #
+###############
 proc_name=$1
 shift
 
 if [ -z "$proc_name" ]; then
-  printf "Usage: ./tick/scripts/restart.sh <procName> [-e envFile] [-s secondaries]\n"
+  printf "Usage: ./tick/scripts/restart.sh <procName> [-s secondaries]\n"
   exit 1
 fi
 
-e_flag=".env"
 s_flag=0
 
-while getopts 'e:s:' flag; do
+while getopts 's:' flag; do
   case "${flag}" in
-    e) e_flag="${OPTARG}" ;;
     s) s_flag="${OPTARG}" ;;
     *) exit 1 ;;
   esac
 done
-
-if [ ! -f "$e_flag" ]; then
-  echo "Env file not found: $e_flag"
-  exit 1
-fi
-source "$e_flag"
 
 kill_proc() {
   local pattern=$1
@@ -80,7 +101,7 @@ case "$proc_name" in
   FH)
     kill_proc "FH"
     q tick/tick/fh.q -p $FH_PORT -s $s_flag \
-      -fhDir $FH_ANALYTIC_DIR -fhTimer $FH_TIMER \
+      -fhTimer $FH_TIMER \
       -tpPort $TICK_PORT \
       -procName FH < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
     echo "  Started FH [$FH_PORT]"
@@ -89,7 +110,6 @@ case "$proc_name" in
   RTE)
     kill_proc "RTE"
     q tick/tick/rte.q -p $RTE_PORT -s $s_flag \
-      -enrichFile $RTE_ENRICH_FILE \
       -tpPort $TICK_PORT \
       -procName RTE < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
     echo "  Started RTE [$RTE_PORT]"

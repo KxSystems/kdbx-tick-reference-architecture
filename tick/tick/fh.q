@@ -1,11 +1,11 @@
 // tick/tick/fh.q - Feedhandler Process
 //
-// q tick/tick/fh.q -p $FH_PORT -tpPort $TICK_PORT -fhDir $FH_ANALYTIC_DIR \
-//                  -fhTimer $FH_TIMER -procName FH
+// q tick/tick/fh.q -p $FH_PORT -tpPort $TICK_PORT -fhTimer $FH_TIMER -procName FH
 //
-// Connects to the Tickerplant with exponential-backoff retry, loads every `.q` analytic file
-// from `-fhDir` (each expected to populate the `.fh.upsert` namespace), and pushes a batch
-// from each registered upsert to the TP on every timer tick.
+// Connects to the Tickerplant with exponential-backoff retry, then publishes a single
+// synthetic row to each of the `energy` and `weather` tables on every timer tick.
+// To extend, customise the body of `.timer.funcs[`fhUpsert]` below — read from your
+// own source, transform as needed, and call `neg[TP_H] (`.u.upd; <table>; <row data>)`.
 
 system"l tick/utils/main.q";
 
@@ -36,18 +36,13 @@ system"l tick/utils/main.q";
 // @desc Tickerplant handle — established with up to 10 retry attempts at startup
 TP_H:.fh.connectTPWithRetry[10];
 
-// Load every `.q` file under `-fhDir`. Each is expected to register one or more
-// `.fh.upsert.<name>` functions which the timer dispatch below invokes.
-.log.info["Loading FH analytics"];
-{[x]
-    system each "l ",/:1_/:string .Q.dd[aDir;] each f:key aDir:hsym `$x
-    }(first CLI_ARGS[`fhDir]);
-
-// @desc Timer dispatch — invokes every registered `.fh.upsert.*` function once per tick
-// Each upsert is responsible for publishing its own batch to the TP. Errors are caught
-// per-upsert via `.Q.trp` so a failure in one upsert does not abort the others.
+// @desc Timer dispatch — publish one synthetic row to `energy` and one to `weather` each tick
+// Replace the row construction here with your own data source / transformation.
 .timer.funcs[`fhUpsert]:{[]
-    .Q.trp[{value[1_.fh.upsert]@\:(::)};::; {.log.error["Upsert failed | ERROR: ", x]}];
+    neg[TP_H] (`.u.upd; `energy;
+        (enlist .z.n; enlist `BLOWER78_1; enlist .z.d; enlist .z.t; enlist 50f + rand 100f));
+    neg[TP_H] (`.u.upd; `weather;
+        (enlist .z.n; enlist `SanDiego; enlist .z.z; enlist 20f + rand 10f; enlist 40f + rand 30f; enlist rand 5f; enlist rand 20f));
     };
 
 // Activate the timer at the configured interval (ms)

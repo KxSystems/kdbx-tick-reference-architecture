@@ -447,80 +447,32 @@ Results are written to `app/proclogs/e2e_<datetime>.log` in the same structured 
 <summary>Initial Directory Tree</summary>
 
 ```
-kdbx-tick-reference-architecture/
-├── app/
-│   ├── hdb/
-│   ├── proclogs/
-│   └── tplogs/
-├── samples/
-│   ├── analytics/
-│   ├── data/
-│   ├── enrichments/
-│   ├── schemas/
-│   └── sample_env
-├── scalable-tick++/
-│   ├── README.md
-│   ├── scalable-tick++/
-│   │   ├── batch.q
-│   │   ├── client.q
-│   │   ├── fh.q
-│   │   ├── gw.q
-│   │   ├── hdb.q
-│   │   ├── qp.q
-│   │   ├── qr.q
-│   │   ├── r.q
-│   │   ├── rest-gw.q
-│   │   ├── rte.q
-│   │   ├── tick.q
-│   │   └── u.q
-│   ├── scripts/
-│   │   ├── backfill.sh
-│   │   ├── batch-load.sh
-│   │   ├── fh-timer.sh
-│   │   ├── monitor.sh
-│   │   ├── reload-hdb.sh
-│   │   ├── restart.sh
-│   │   ├── rotate-logs.sh
-│   │   ├── scale.sh
-│   │   ├── shutdown.sh
-│   │   └── startup.sh
-│   ├── tests/
-│   │   ├── api-test.q
-│   │   ├── client.q
-│   │   ├── load-test.sh
-│   │   └── rest-test.q
-│   └── utils/
-│       ├── logging.q
-│       ├── main.q
-│       ├── reload-hdb-helper.q
-│       ├── rotate-logs.sh
-│       └── timer.q
-└── tick/
-    ├── README.md
-    ├── scripts/
-    │   ├── fh-timer.sh
-    │   ├── monitor.sh
-    │   ├── restart.sh
-    │   ├── shutdown.sh
-    │   └── startup.sh
-    ├── tests/
-    │   ├── api-test.q
-    │   ├── e2e-test.q
-    │   └── rest-test.q
-    ├── tick/
-    │   ├── client.q
-    │   ├── fh.q
-    │   ├── gw.q
-    │   ├── hdb.q
-    │   ├── r.q
-    │   ├── rte.q
-    │   ├── tick.q
-    │   └── u.q
-    └── utils/
-        ├── logging.q
-        ├── main.q
-        ├── rotate-logs.sh
-        └── timer.q
+tick++/
+├── README.md
+├── scripts/
+│   ├── fh-timer.sh
+│   ├── monitor.sh
+│   ├── restart.sh
+│   ├── shutdown.sh
+│   └── startup.sh
+├── tests/
+│   ├── api-test.q
+│   ├── e2e-test.q
+│   └── rest-test.q
+├── tick/
+│   ├── client.q
+│   ├── fh.q
+│   ├── gw.q
+│   ├── hdb.q
+│   ├── rdb.q
+│   ├── rte.q
+│   ├── tick.q
+│   └── u.q
+└── utils/
+    ├── logging.q
+    ├── main.q
+    ├── rotate-logs.sh
+    └── timer.q
 ```
 
 </details>

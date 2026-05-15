@@ -4,24 +4,41 @@
 # Designed to run via cron (e.g. */1 * * * *) or manually.
 #
 # Usage:
-#   ./tick/scripts/monitor.sh [-e envFile] [-s secondaries]
+#   ./tick/scripts/monitor.sh [-s secondaries]
+#
+# All configuration is hardcoded below — keep in sync with tick/scripts/startup.sh.
 
-e_flag=".env"
+# ── Configuration ─────────────────────────────────────────────────────────
+TPLOG_DIR="app/tplogs"
+HDB_DIR="app/hdb"
+PROCESS_LOG_DIR="app/proclogs"
+
+SCHEMA_DIR="samples/schemas"
+ANALYTIC_DIR="samples/analytics"
+
+TPLOG_NAME="tpLog"
+LOG_LEVEL="info"
+
+TICK_PORT=5010
+RDB_PORT=5011
+HDB_PORT=5012
+GW_PORT=5013
+FH_PORT=5014
+RTE_PORT=5016
+
+FH_TIMER=60000
+
+export SCHEMA_DIR TPLOG_NAME LOG_LEVEL
+
+# ── CLI parsing ──────────────────────────────────────────────────────────
 s_flag=0
 
-while getopts 'e:s:' flag; do
+while getopts 's:' flag; do
   case "${flag}" in
-    e) e_flag="${OPTARG}" ;;
     s) s_flag="${OPTARG}" ;;
     *) exit 1 ;;
   esac
 done
-
-if [ ! -f "$e_flag" ]; then
-  echo "Env file not found: $e_flag"
-  exit 1
-fi
-source "$e_flag"
 
 is_alive() {
   pgrep -af "q.*-procName ${1}\b" > /dev/null 2>&1
@@ -67,7 +84,7 @@ check_proc "HDB" || {
 
 check_proc "FH" || {
   q tick/tick/fh.q -p $FH_PORT -s $s_flag \
-    -fhDir $FH_ANALYTIC_DIR -fhTimer $FH_TIMER \
+    -fhTimer $FH_TIMER \
     -tpPort $TICK_PORT \
     -procName FH < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
   echo "[$ts]         Started FH [$FH_PORT]"
@@ -75,7 +92,6 @@ check_proc "FH" || {
 
 check_proc "RTE" || {
   q tick/tick/rte.q -p $RTE_PORT -s $s_flag \
-    -enrichFile $RTE_ENRICH_FILE \
     -tpPort $TICK_PORT \
     -procName RTE < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
   echo "[$ts]         Started RTE [$RTE_PORT]"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Kill all running stack processes.
-# Run from the project root directory.
+# Kill all running stack processes
+# Run from the project root directory
 
 echo "Killing processes:"
 pgrep -af "q.*-procName" | while read line; do

@@ -1,13 +1,18 @@
 // tick/tick/rte.q - Real-Time Engine (Enrichment Process)
 //
-// q tick/tick/rte.q -p $RTE_PORT -tpPort $TICK_PORT -enrichFile $RTE_ENRICH_FILE \
-//                   -procName RTE
+// q tick/tick/rte.q -p $RTE_PORT -tpPort $TICK_PORT [-enrichFile <path>] -procName RTE
 //
-// Loads an enrichment file which registers TP subscriptions and enrichment functions:
-//   • `.rte.subscriptions[tab]:syms`  — what to subscribe to on the TP
-//   • `.rte.enrichmentDict[func]:tab` — which functions transform incoming rows for `tab`
+// Single instance, lives in the realtime module alongside the RDB. Starts with no
+// enrichments registered — the registration API below is the extension point.
 //
-// Single instance, lives in the realtime module alongside the RDB.
+// To add a custom enrichment:
+//   1. Define a global function `myEnrich:{[data] ...; .rte.pub[`derivedTable; derived]};`
+//   2. Register it:  `.rte.addEnrichment[`myEnrich; `sourceTable]`
+//   3. Subscribe RTE to the source table on the TP:  `.rte.addSubscription[`sourceTable; `]`
+// Bundle steps 1–3 into a `.q` file and pass it via the optional `-enrichFile` argument
+// to load at startup (see the "Example Enrichment File" block in tick/README.md), or call
+// the registration helpers directly over IPC.
+//
 //   Flow: FH → TP → (.rte.subscriptions) → RTE → (.rte.enrichmentDict) → (.rte.pub) → TP → RDB
 
 system"l tick/utils/main.q";
@@ -25,7 +30,8 @@ TP_H:0N;
 
 // @desc Register / extend a TP subscription for `tab`
 // Rejects non-symbol `syms`. If a subscription for `tab` already exists, merges `syms`
-// into the existing filter (distinct union); otherwise creates a new entry.
+// into the existing filter (distinct union); otherwise creates a new entry. If the RTE
+// is already connected to the TP, the new subscription is also sent immediately.
 //
 // @param tab     {symbol}    Table name to subscribe to
 // @param syms    {symbol[]}  Sym filter (`` for all)
@@ -44,7 +50,8 @@ TP_H:0N;
             .rte.subscriptions[tab]: syms;
             .log.info[("Added subscription for table [%s] and syms [%s]"; string[tab]; string[syms])]
             ]
-        ]
+        ];
+    if[not null TP_H; TP_H (`.u.sub; tab; syms)];
     };
 
 // @desc Register an enrichment function for `tab`
@@ -112,32 +119,24 @@ TP_H:0N;
       }; (t;x;nrows); {.log.error["Publish to TP failed: ",x]}];
     };
 
-// Always load schemas locally — gives us `cols <table>` for column reordering in
-// enrichment functions.
-{system each "l ",/:1_/:string .Q.dd[sDir;] each key sDir:hsym `$x}[getenv[`SCHEMA_DIR]];
-
-// Load the enrichment file. The file is expected to:
-//   sampleEnrich:{[data] /* enrich data; */ .rte.pub[`targetTable;enrichedData]};
-//   .rte.addEnrichment[`sampleEnrich; `targetTable];
-//   .rte.addSubscription[`targetTable; `];
-.log.info[("Loading enrichment file [%s]"; first CLI_ARGS[`enrichFile])];
-if[any first[CLI_ARGS[`enrichFile]]~/:(();"");
-    .log.fatal["No enrichment file provided, exiting"];
-    exit 1;
-    ];
-system "l ",first CLI_ARGS[`enrichFile];
-
-if[0=count .rte.subscriptions;
-    .log.warn["No subscriptions registered - RTE will idle"];
-    ];
-
-if[0=count .rte.enrichmentDict;
-    .log.warn["No enrichment functions registered - RTE will idle"];
+// Optional enrichment file — if `-enrichFile` is supplied, load it now so the file
+// can call `.rte.addEnrichment` / `.rte.addSubscription` before TP connect happens.
+// Nothing is loaded by default; the RTE starts idle and waits for IPC-driven registration.
+if[(`enrichFile in key CLI_ARGS) and not any first[CLI_ARGS[`enrichFile]]~/:(();"");
+    enrichPath:first CLI_ARGS[`enrichFile];
+    .log.info[("Loading enrichment file [%s]";enrichPath)];
+    system "l ",enrichPath
     ];
 
 // Initial TP connect. If TP is not yet available, timer will reconnect when it comes up.
+// With no subscriptions registered this is just an idle handle; subsequent
+// `.rte.addSubscription` calls will both register locally and forward to the live TP.
 if[not .rte.connectTPWithRetry[10];
     .log.warn["TP not available on startup - timer will retry"];
+    ];
+
+if[0=count .rte.enrichmentDict;
+    .log.info["RTE started with no enrichments registered — use .rte.addEnrichment / .rte.addSubscription to extend"];
     ];
 
 // @desc upd handler called by TP on publish
