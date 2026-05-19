@@ -1,6 +1,6 @@
-# Tick++ Reference Architecture
+# Scaled Tick++ Reference Architecture
 
-A template for KDB-X tick architecture with additional layers to exend base tick configuration.
+A template for a scalable KDB-X Tick++ architecture with additional layers for custom configuration.
 
 ## Description
 

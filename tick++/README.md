@@ -18,7 +18,7 @@ The architecture contained within this repository consists of the following q pr
 ### Intraday Writedown Flow
 
 ```
-                                                ┌──> CHAINED_RDB ──> (serves `rdb` queries)
+                                               ┌──> CHAINED_RDB ──> (serves `rdb` queries)
 TP ──> (sub) ──┬──> RDB ── flush every N min ──┴──> <IDB_DIR>/today/<i>/<table>/
                │                              │
                │                              └─ async signal ──> IDB.reload[] ──> (serves `idb` queries)
