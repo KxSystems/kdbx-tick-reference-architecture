@@ -11,7 +11,7 @@
 // Example usage (once running):
 //   GW_H (`.kxgw.query; `rdb; "select from energy")
 //   GW_H (`.kxgw.query; `hdb; ({[tab;d] select from tab where date=d}; `energy; 2026.04.17))
-//   GW_H (`.kxgw.query; `both; ("select from energy"; "select from energy where date=2026.04.17"))
+//   GW_H (`.kxgw.query; `all;  ("select from energy"; "select from energy"; "select from energy where date=2026.04.17"))
 //   RDB_H "tables[]"
 //   HDB_H "tables[]"
 

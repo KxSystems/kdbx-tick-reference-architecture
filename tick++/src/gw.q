@@ -7,7 +7,7 @@
 //   • `rdb`  — chained RDB (most recent in-memory data, not yet flushed)
 //   • `idb`  — intraday DB (today's flushed int-partitions, in memory from disk)
 //   • `hdb`  — historical DB (post-EOD on-disk partitions)
-//   • `both` — RDB + HDB (legacy two-tier query; does not include IDB)
+//   • `all`  — RDB + IDB + HDB (fan-out across all three tiers)
 //
 // Note that `-rdbPort` targets the chained RDB (`chainedrdb.q`), not the writedown-role
 // main RDB — the main RDB never serves queries.
@@ -70,11 +70,11 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
 
 // @desc Query dispatch entry point — routes opaque `query` to the chosen target(s)
 // `target` selects which database is queried; `query` may be a string, parse-tree, or
-// (for `both`) a 2-element list of (rdbQuery; hdbQuery). All errors are caught and
-// returned as ``error`msg!(...; ...)`` dictionaries rather than thrown.
+// (for `all`) a 3-element list of (rdbQuery; idbQuery; hdbQuery). All errors are caught
+// and returned as ``error`msg!(...; ...)`` dictionaries rather than thrown.
 //
-// @param target  {symbol}    `` `rdb`` | `` `idb`` | `` `hdb`` | `` `both`` (rdb + hdb)
-// @param query   {*}         String / parse-tree / 2-list (`both` only)
+// @param target  {symbol}    `` `rdb`` | `` `idb`` | `` `hdb`` | `` `all`` (rdb + idb + hdb)
+// @param query   {*}         String / parse-tree / 3-list (`all` only)
 //
 // @return        {*}         Query result, or `` `error`msg!`` dictionary on failure
 .kxgw.query:{[target;query]
@@ -93,15 +93,18 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
          if[null h; :`error`msg!("No available HDB";"")];
          @[h; query; {`error`msg!("HDB query failed";x)}]
         ];
-      target=`both;
-        [rh:.kxgw.getRDB[]; hh:.kxgw.getHDB[];
+      target=`all;
+        [rh:.kxgw.getRDB[]; ih:.kxgw.getIDB[]; hh:.kxgw.getHDB[];
          if[null rh; :`error`msg!("No available RDB";"")];
+         if[null ih; :`error`msg!("No available IDB";"")];
          if[null hh; :`error`msg!("No available HDB";"")];
-         rq:$[0h=type query; first query; query];
-         hq:$[0h=type query; last  query; query];
+         rq:$[0h=type query; query 0; query];
+         iq:$[0h=type query; query 1; query];
+         hq:$[0h=type query; query 2; query];
          rr:@[rh; rq; {`error`msg!("RDB query failed";x)}];
+         ir:@[ih; iq; {`error`msg!("IDB query failed";x)}];
          hr:@[hh; hq; {`error`msg!("HDB query failed";x)}];
-         `rdb`hdb!(rr;hr)
+         `rdb`idb`hdb!(rr;ir;hr)
         ];
       [`error`msg!("Unknown target: ",string[target];"")]
     ]

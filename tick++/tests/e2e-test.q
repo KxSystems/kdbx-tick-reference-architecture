@@ -69,7 +69,7 @@ rdbCounts:gwh(`.kxgw.query; `rdb; "tables[]!count each value each tables[]");
 
 // ── Phase 3: q-IPC query tests ────────────────────────────────────────────
 // Delegates to api-test.q which covers: string queries, parse-tree queries,
-// sym filters, HDB (empty-safe), both target, and error handling.
+// sym filters, HDB (empty-safe), all target, and error handling.
 .t.section "Phase 3: q-IPC query tests (api-test.q)";
 
 apiCmd:"q tick++/tests/api-test.q -gwPort ",string[GW_PORT]," -procName api-test";
@@ -89,9 +89,9 @@ hdbCounts:gwh(`.kxgw.query; `hdb; "tables[]!count each value each tables[]");
 .t.check["HDB energy has rows after EOD";  {0<x`energy};  hdbCounts];
 .t.check["HDB weather has rows after EOD"; {0<x`weather}; hdbCounts];
 
-both5:gwh(`.kxgw.query; `both; "select from energy");
-.t.check["both post-EOD returns dict";       {(99h=type x) and `rdb`hdb~key x}; both5];
-.t.check["both post-EOD: HDB side has rows"; {0<count x`hdb};                   both5];
+all5:gwh(`.kxgw.query; `all; "select from energy");
+.t.check["all post-EOD returns dict";        {(99h=type x) and `rdb`idb`hdb~key x}; all5];
+.t.check["all post-EOD: HDB side has rows";  {0<count x`hdb};                       all5];
 
 // ── Phase 6: REST endpoint tests (post-EOD) ───────────────────────────────
 // rest-test.q checks HTTP status AND response body shape. Running post-EOD

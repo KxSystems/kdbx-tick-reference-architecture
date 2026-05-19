@@ -43,7 +43,7 @@ Tick++ trades operational simplicity for query/ingest isolation and intraday dur
 | **Processes** | 6 (TP, RDB, HDB, FH, RTE, GW) | 8 (TP, RDB, **CHAINED_RDB**, **IDB**, HDB, FH, RTE, GW) |
 | **RDB role** | Single — ingest, in-memory query, and EOD writedown all on one process | Split — main RDB ingests + writes; CHAINED_RDB serves queries |
 | **Writedown cadence** | Once per day (`.u.end` does the full `.Q.hdpf` from memory) | Every `FLUSH_INTV_MIN` minutes (int-partitions to `<IDB_DIR>/today/`) + EOD merge |
-| **Query tiers via GW** | 2: `rdb`, `hdb` (+ `both`) | 3: `rdb`, `idb`, `hdb` (+ `both`, which stays `rdb` + `hdb` for back-compat) |
+| **Query tiers via GW** | 2: `rdb`, `hdb` (+ `both`) | 3: `rdb`, `idb`, `hdb` (+ `all`, fans across all three tiers) |
 | **Today's older data** | Sits in RDB memory until EOD; queried via `rdb` | Flushed to disk after `FLUSH_INTV_MIN` min; queried via `idb` |
 | **Runtime dirs** | `app/tplogs`, `app/hdb`, `app/proclogs` | adds `app/idb/` (staging for int-partitions) |
 | **Config surface** | 14 variables | adds `IDB_DIR`, `IDB_PORT`, `CHAINED_RDB_PORT`, `FLUSH_INTV_MIN` |
@@ -65,7 +65,7 @@ Tick++ trades operational simplicity for query/ingest isolation and intraday dur
   - Main RDB dies mid-flush → a partially-written int-partition under `<IDB_DIR>/today/<i>/` (use a fresh `<i>` next time; the partial dir is benign but worth cleaning manually).
   - IDB is down when the main RDB signals a reload → the IDB just keeps the stale view; the next signal (or restart) corrects it. The signal is fire-and-forget by design.
   - CHAINED_RDB falls behind the main RDB → queries return slightly stale data. The two are independent TP subscribers, so they can desync briefly under load; both will catch up.
-- **Three-tier query model.** Callers need to understand the cutover between `rdb` (most recent), `idb` (today's older), and `hdb` (post-EOD). Base tick's two-tier `rdb`/`hdb` split is mentally simpler. `both` is kept as legacy (rdb + hdb only) to avoid silently changing existing client behavior, but it means "all of today's data" is now `rdb` + `idb` rather than just `rdb`.
+- **Three-tier query model.** Callers need to understand the cutover between `rdb` (most recent), `idb` (today's older), and `hdb` (post-EOD). Base tick's two-tier `rdb`/`hdb` split is mentally simpler. The `all` target fans across all three tiers when callers don't want to pick — but "all of today's data" is now `rdb` + `idb` rather than just `rdb`.
 - **Schema must be loaded in one more place.** Base tick loads schemas in the TP and RDB. Tick++ adds IDB to that list (so it has table shapes + `g#sym` before the first reload).
 - **More configuration to keep in sync across scripts.** `IDB_DIR`, `IDB_PORT`, `CHAINED_RDB_PORT`, `FLUSH_INTV_MIN` must match across `startup.sh` and `restart.sh`.
 
@@ -241,8 +241,8 @@ gwh (`.kxgw.query; `idb; "select from energy")
 // Query the HDB (historical, post-EOD)
 gwh (`.kxgw.query; `hdb; "select from energy where date=.z.d-1")
 
-// Query both RDB + HDB (legacy two-tier; does not include IDB)
-gwh (`.kxgw.query; `both; "select from energy")
+// Fan out across all three tiers (RDB + IDB + HDB); returns `rdb`idb`hdb!(...)
+gwh (`.kxgw.query; `all; "select from energy")
 ```
 
 Note: the `rdb` tier is served by the chained RDB (`chainedrdb.q`), **not** the writedown-role main RDB. The main RDB never serves queries.

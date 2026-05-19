@@ -1,5 +1,5 @@
 // GW query test script — Track 1 (Tick Reference Architecture)
-// Tests .kxgw.query against rdb, hdb, and both targets via the GW.
+// Tests .kxgw.query against rdb, hdb, and all targets via the GW.
 // Usage: q tick++/tests/api-test.q -gwPort 5013 -procName api-test
 
 args:.Q.opt .z.x;
@@ -17,7 +17,7 @@ run:{[name;expr;expected]
         expected~`error; (99h=type res) and `error in key res;
         expected~`table; 98h=type res;
         expected~`dict;  99h=type res;
-        expected~`both;  (99h=type res) and `rdb`hdb~key res;
+        expected~`all;   (99h=type res) and `rdb`idb`hdb~key res;
         res~expected
     ];
     $[ok;
@@ -56,16 +56,16 @@ run["HDB weather query returns table";
     {h (`.kxgw.query; `hdb; "select from weather where date=first date")};
     `any];
 
-// ── Both (fan-out) ────────────────────────────────────────────────────────
--1 "\n=== .kxgw.query Both (sequential fan-out) Tests ===\n";
+// ── All (fan-out across rdb + idb + hdb) ──────────────────────────────────
+-1 "\n=== .kxgw.query All (sequential fan-out) Tests ===\n";
 
-run["Both returns dict with rdb and hdb keys";
-    {h (`.kxgw.query; `both; ("select from energy"; "select from energy where date=first date"))};
-    `both];
+run["All returns dict with rdb, idb, and hdb keys";
+    {h (`.kxgw.query; `all; ("select from energy"; "select from energy"; "select from energy where date=first date"))};
+    `all];
 
-run["Both with single query applied to both targets";
-    {h (`.kxgw.query; `both; "select from energy")};
-    `both];
+run["All with single query applied to all targets";
+    {h (`.kxgw.query; `all; "select from energy")};
+    `all];
 
 // ── Error handling ────────────────────────────────────────────────────────
 -1 "\n=== Error Handling Tests ===\n";
