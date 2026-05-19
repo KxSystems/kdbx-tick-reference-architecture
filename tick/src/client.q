@@ -1,6 +1,6 @@
-// tick/tick/client.q - Interactive Q Client
+// tick/src/client.q - Interactive Q Client
 //
-// Usage: source .env && q tick/tick/client.q -gwPort $GW_PORT -rtePort $RTE_PORT \
+// Usage: source .env && q tick/src/client.q -gwPort $GW_PORT -rtePort $RTE_PORT \
 //          -rdbPort $RDB_PORT -hdbPort $HDB_PORT -tpPort $TICK_PORT -fhPort $FH_PORT \
 //          -procName client1
 //

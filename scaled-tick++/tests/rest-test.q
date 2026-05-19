@@ -1,7 +1,7 @@
 // REST API test script
 // Exercises the /energy/* and /weather/* endpoints served by the GW,
 // asserting HTTP status + JSON body shape for success and 404 paths.
-// Usage: source .env && q tick++/tests/rest-test.q -gwPort $GW_PORT -procName rest-test
+// Usage: source .env && q scaled-tick++/tests/rest-test.q -gwPort $GW_PORT -procName rest-test
 //   -gwHost  (optional, default: localhost)
 
 args:.Q.opt .z.x;

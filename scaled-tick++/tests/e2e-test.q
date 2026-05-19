@@ -10,9 +10,9 @@
 //   Phase 8  — restart.sh GW (kills GW, expects restart)
 //
 // Usage (from project root):
-//   source .env && q tick++/tests/e2e-test.q -gwPort $GW_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
+//   source .env && q scaled-tick++/tests/e2e-test.q -gwPort $GW_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
 
-system "l tick++/utils/main.q";
+system "l scaled-tick++/utils/main.q";
 
 GW_PORT: "I"$first CLI_ARGS[`gwPort];
 TP_PORT: "I"$first CLI_ARGS[`tpPort];
@@ -74,7 +74,7 @@ rdbCounts:gwh(`.kxgw.query; `rdb; "tables[]!count each value each tables[]");
 // sym filters, HDB (empty-safe), both target, and error handling.
 .t.section "Phase 3: q-IPC query tests (api-test.q)";
 
-apiCmd:"q tick++/tests/api-test.q -gwPort ",string[GW_PORT]," -procName api-test";
+apiCmd:"q scaled-tick++/tests/api-test.q -gwPort ",string[GW_PORT]," -procName api-test";
 .log.info["Running: ",apiCmd];
 .t.check["api-test.q passed"; {x}; .t.runScript[apiCmd]];
 
@@ -112,8 +112,8 @@ both5:gwh(`.kxgw.query; `both; "select from energy");
 // and return JSON arrays rather than error bodies with HTTP 200.
 .t.section "Phase 6: REST endpoint tests post-EOD (rest-test.q)";
 
-restCmd:"q tick++/tests/rest-test.q -gwPort ",string[GW_PORT]," 2>&1";
-.log.info["Running: q tick++/tests/rest-test.q -gwPort ",string GW_PORT];
+restCmd:"q scaled-tick++/tests/rest-test.q -gwPort ",string[GW_PORT]," 2>&1";
+.log.info["Running: q scaled-tick++/tests/rest-test.q -gwPort ",string GW_PORT];
 .t.check["rest-test.q passed"; {x}; .t.runScript[restCmd]];
 
 // ── Phase 7: RDB leader failover ──────────────────────────────────────────
@@ -145,7 +145,7 @@ if[not null gwPidI;
     .log.info["Killing GW (pid ",gwPid,")..."];
     system "kill -9 ",gwPid;
     system "sleep 0.5";
-    system "./tick++/scripts/restart.sh GW -e .env -m 1";
+    system "./scaled-tick++/scripts/restart.sh GW -e .env -m 1";
     system "sleep 3";
     newGwh:@[hopen; `$"::",string GW_PORT; {0Ni}];
     .t.check["restart.sh restarted GW"; {not null x}; newGwh];

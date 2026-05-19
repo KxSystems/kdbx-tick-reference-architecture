@@ -4,11 +4,11 @@
 CLI_ARGS:.Q.opt .z.x;
 
 // Initialise timer library
-system"l tick++/utils/timer.q";
+system"l scaled-tick++/utils/timer.q";
 
 // Initialise log library
 {[x]
-    system"l tick++/utils/logging.q";
+    system"l scaled-tick++/utils/logging.q";
     .log.procStarted[x];
     .log.initFile[x;.z.z];
  }[first CLI_ARGS[`procName]];

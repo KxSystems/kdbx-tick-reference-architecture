@@ -1,7 +1,7 @@
-// tick++/src/hdb.q - Historical Database Process
+// scaled-tick++/src/hdb.q - Historical Database Process
 //
-// q tick++/src/hdb.q -p $HDB_PORT -hdbDir $HDB_DIR -procName HDB
-// q tick++/src/hdb.q -p $HDB_EXTRA_PORT -hdbDir $HDB_DIR -procName HDB_EXTRA_<N>
+// q scaled-tick++/src/hdb.q -p $HDB_PORT -hdbDir $HDB_DIR -procName HDB
+// q scaled-tick++/src/hdb.q -p $HDB_EXTRA_PORT -hdbDir $HDB_DIR -procName HDB_EXTRA_<N>
 //
 // Loads the on-disk partitioned database from `-hdbDir` and serves queries from the gateway.
 // Started in two flavours: the base HDB (always) and one HDB_EXTRA_<N> per chained RDB_CHAIN_<N>
@@ -10,7 +10,7 @@
 // can refresh the in-memory view of disk without restarting the process.
 
 // Load utility scripts
-system"l tick++/utils/main.q";
+system"l scaled-tick++/utils/main.q";
 
 .log.info["Initialising HDB"];
 

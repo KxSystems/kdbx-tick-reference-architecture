@@ -1,6 +1,6 @@
-// tick++/src/u.q - Pub/Sub Tickerplant Functionality (Chained-RDB-aware)
+// scaled-tick++/src/u.q - Pub/Sub Tickerplant Functionality (Chained-RDB-aware)
 //
-// Helper functions used by tick++/src/tick.q
+// Helper functions used by scaled-tick++/src/tick.q
 // Extends the base kdb-tick u.q with an RDB leader/follower failover hook driven from `.z.pc`.
 //
 // See https://github.com/KxSystems/kdb-tick for the base pattern

@@ -1,6 +1,6 @@
-// tick++/src/gw.q - Gateway Process (q-IPC + REST, chained-RDB-aware)
+// scaled-tick++/src/gw.q - Gateway Process (q-IPC + REST, chained-RDB-aware)
 //
-// q tick++/src/gw.q -p $GW_PORT -rdbPort $RDB_PORT [-crdbPort $RDB_CHAIN_PORTS] \
+// q scaled-tick++/src/gw.q -p $GW_PORT -rdbPort $RDB_PORT [-crdbPort $RDB_CHAIN_PORTS] \
 //                    -hdbPort $HDB_PORTS -analyticsDir $ANALYTIC_DIR -procName GW
 //
 // Routes queries from q-IPC and REST clients across one leader RDB plus N RDB_CHAIN
@@ -8,7 +8,7 @@
 // REST endpoints whose handlers call `.restgw.query` (aliased to `.kxgw.query`) to issue
 // queries through the gateway. Per-target load-balancing picks a random alive handle.
 
-system"l tick++/utils/main.q";
+system"l scaled-tick++/utils/main.q";
 
 .log.info["Initialising GW"];
 

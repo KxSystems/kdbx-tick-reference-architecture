@@ -3,20 +3,20 @@
 # Restart a specific process without taking down the whole stack.
 # Run from the project root directory.
 #
-# Usage: ./tick++/scripts/restart.sh <procName> [-e envFile] [-s secondaries] [-m chainedRdbs]
+# Usage: ./scaled-tick++/scripts/restart.sh <procName> [-e envFile] [-s secondaries] [-m chainedRdbs]
 #
 # procName: TP | RDB | RDB_CHAIN_<N> | HDB | HDB_EXTRA_<N> | FH | RTE | GW
 #
 # Examples:
-#   ./tick++/scripts/restart.sh GW
-#   ./tick++/scripts/restart.sh RTE
-#   ./tick++/scripts/restart.sh RDB_CHAIN_0 -m 2
+#   ./scaled-tick++/scripts/restart.sh GW
+#   ./scaled-tick++/scripts/restart.sh RTE
+#   ./scaled-tick++/scripts/restart.sh RDB_CHAIN_0 -m 2
 
 proc_name=$1
 shift
 
 if [ -z "$proc_name" ]; then
-  printf "Usage: ./tick++/scripts/restart.sh <procName> [-e envFile] [-s secondaries] [-m chainedRdbs]\n"
+  printf "Usage: ./scaled-tick++/scripts/restart.sh <procName> [-e envFile] [-s secondaries] [-m chainedRdbs]\n"
   exit 1
 fi
 
@@ -66,7 +66,7 @@ echo "Restarting [$proc_name]..."
 case "$proc_name" in
   TP)
     kill_proc "TP"
-    q tick++/src/tick.q -p $TICK_PORT -s $s_flag \
+    q scaled-tick++/src/tick.q -p $TICK_PORT -s $s_flag \
       -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR \
       -procName TP < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
     echo "  Started TP [$TICK_PORT]"
@@ -74,7 +74,7 @@ case "$proc_name" in
 
   RDB)
     kill_proc "RDB"
-    q tick++/src/rdb.q -p $RDB_PORT -s $s_flag \
+    q scaled-tick++/src/rdb.q -p $RDB_PORT -s $s_flag \
       -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
       -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
       -procName RDB < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
@@ -84,7 +84,7 @@ case "$proc_name" in
   RDB_CHAIN_[0-9]*)
     idx=${proc_name#RDB_CHAIN_}
     kill_proc "$proc_name"
-    q tick++/src/rdb.q -p ${RDB_CHAIN_PORTS[$idx]} -s $s_flag \
+    q scaled-tick++/src/rdb.q -p ${RDB_CHAIN_PORTS[$idx]} -s $s_flag \
       -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
       -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
       -procName RDB_CHAIN_$idx < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
@@ -93,7 +93,7 @@ case "$proc_name" in
 
   HDB)
     kill_proc "HDB"
-    q tick++/src/hdb.q -p $HDB_PORT -s $s_flag \
+    q scaled-tick++/src/hdb.q -p $HDB_PORT -s $s_flag \
       -hdbDir $HDB_DIR \
       -procName HDB < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
     echo "  Started HDB [$HDB_PORT]"
@@ -102,7 +102,7 @@ case "$proc_name" in
   HDB_EXTRA_[0-9]*)
     idx=${proc_name#HDB_EXTRA_}
     kill_proc "$proc_name"
-    q tick++/src/hdb.q -p ${HDB_EXTRA_PORTS[$idx]} -s $s_flag \
+    q scaled-tick++/src/hdb.q -p ${HDB_EXTRA_PORTS[$idx]} -s $s_flag \
       -hdbDir $HDB_DIR \
       -procName HDB_EXTRA_$idx < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
     echo "  Started HDB_EXTRA_$idx [${HDB_EXTRA_PORTS[$idx]}]"
@@ -110,7 +110,7 @@ case "$proc_name" in
 
   FH)
     kill_proc "FH"
-    q tick++/src/fh.q -p $FH_PORT -s $s_flag \
+    q scaled-tick++/src/fh.q -p $FH_PORT -s $s_flag \
       -fhDir $FH_ANALYTIC_DIR -fhTimer $FH_TIMER \
       -tpPort $TICK_PORT \
       -procName FH < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
@@ -119,7 +119,7 @@ case "$proc_name" in
 
   RTE)
     kill_proc "RTE"
-    q tick++/src/rte.q -p $RTE_PORT -s $s_flag \
+    q scaled-tick++/src/rte.q -p $RTE_PORT -s $s_flag \
       -enrichFile $RTE_ENRICH_FILE \
       -tpPort $TICK_PORT \
       -procName RTE < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
@@ -128,7 +128,7 @@ case "$proc_name" in
 
   GW)
     kill_proc "GW"
-    q tick++/src/gw.q -p $GW_PORT -s $s_flag \
+    q scaled-tick++/src/gw.q -p $GW_PORT -s $s_flag \
       -rdbPort $RDB_PORT \
       -crdbPort ${RDB_CHAIN_PORTS[*]} \
       -hdbPort ${ALL_HDB_PORTS[*]} \

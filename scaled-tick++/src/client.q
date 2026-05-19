@@ -1,6 +1,6 @@
-// tick++/src/client.q - Interactive Q Client
+// scaled-tick++/src/client.q - Interactive Q Client
 //
-// Usage: source .env && q tick++/src/client.q -gwPort $GW_PORT -rtePort $RTE_PORT \
+// Usage: source .env && q scaled-tick++/src/client.q -gwPort $GW_PORT -rtePort $RTE_PORT \
 //          -rdbPort $RDB_PORT -hdbPort $HDB_PORT -tpPort $TICK_PORT -fhPort $FH_PORT \
 //          -procName client1
 //
@@ -15,7 +15,7 @@
 //   RDB_H "tables[]"
 //   HDB_H "tables[]"
 
-system"l tick++/utils/main.q";
+system"l scaled-tick++/utils/main.q";
 
 .log.info["Initialising Q client"];
 

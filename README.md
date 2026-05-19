@@ -14,7 +14,7 @@ You can find 2 different architecture configurations within this repository:
 
 - basic Tick architecture with some additional customization beyond the barebones [KDB-X System Architecure](https://code.kx.com/kdb-x/how_to/manage_streaming_data/architecture.html) outlined in the KDB-X documentation
 
-### [tick++](./tick++/README.md) 
+### [tick++](./scaled-tick++/README.md) 
 
 - A scalable version of Tick++ that integrates realtime + batch ingestion, asynchronous query gateway, query routing, and dynamic scaling. This is an extension of the [Scalable KDB-X Architecture](https://code.kx.com/kdb-x/how_to/manage_streaming_data/kdb-tick.html) illustrated in the KDB-X docs
 
@@ -59,7 +59,7 @@ kdbx-tick-reference-architecture/
 │       ├── logging.q
 │       ├── main.q
 │       └── timer.q
-└── tick++/
+└── scaled-tick++/
     ├── README.md
     ├── scripts/
     │   ├── fh-timer.sh

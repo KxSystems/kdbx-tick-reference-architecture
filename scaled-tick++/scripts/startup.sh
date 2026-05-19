@@ -3,7 +3,7 @@
 # Start all processes for the Tick Reference Architecture.
 # Run from the project root directory.
 #
-# Usage: ./tick++/scripts/startup.sh [-e envFile] [-s secondaries] [-m chainedRdbs]
+# Usage: ./scaled-tick++/scripts/startup.sh [-e envFile] [-s secondaries] [-m chainedRdbs]
 #   -e  Path to .env file (default: .env)
 #   -s  Secondary threads per process (default: 0)
 #   -m  Number of chained RDB replicas for failover (default: 0)
@@ -14,7 +14,7 @@ s_flag=0
 m_flag=0
 
 print_usage() {
-  printf "Usage: ./tick++/scripts/startup.sh [-e envFile] [-s secondaries] [-m chainedRdbs]\n"
+  printf "Usage: ./scaled-tick++/scripts/startup.sh [-e envFile] [-s secondaries] [-m chainedRdbs]\n"
   printf "  -e  Path to .env file (default: .env)\n"
   printf "  -s  Secondary threads per process (default: 0)\n"
   printf "  -m  Number of chained RDB replicas for failover (default: 0)\n"
@@ -55,7 +55,7 @@ echo -e "  Chained RDBs:     [$m_flag]"
 echo ""
 
 # ── Tickerplant ──────────────────────────────────────────────────────────
-q tick++/src/tick.q \
+q scaled-tick++/src/tick.q \
   -p $TICK_PORT -s $s_flag \
   -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR \
   -procName TP \
@@ -63,7 +63,7 @@ q tick++/src/tick.q \
 echo -e "  Started TP\t\t[$TICK_PORT]"
 
 # ── RDB (realtime leader) ────────────────────────────────────────────────
-q tick++/src/rdb.q \
+q scaled-tick++/src/rdb.q \
   -p $RDB_PORT -s $s_flag \
   -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
   -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
@@ -73,7 +73,7 @@ echo -e "  Started RDB\t\t[$RDB_PORT]"
 
 # ── Chained RDB replicas (failover followers) ────────────────────────────
 for ((i=0; i<m_flag; i++)); do
-  q tick++/src/rdb.q \
+  q scaled-tick++/src/rdb.q \
     -p ${RDB_CHAIN_PORTS[$i]} -s $s_flag \
     -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
     -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
@@ -83,7 +83,7 @@ for ((i=0; i<m_flag; i++)); do
 done
 
 # ── HDB (base) ────────────────────────────────────────────────────────────
-q tick++/src/hdb.q \
+q scaled-tick++/src/hdb.q \
   -p $HDB_PORT -s $s_flag \
   -hdbDir $HDB_DIR \
   -procName HDB \
@@ -92,7 +92,7 @@ echo -e "  Started HDB\t\t[$HDB_PORT]"
 
 # ── Extra HDBs (paired with chained RDB replicas) ────────────────────────
 for ((i=0; i<m_flag; i++)); do
-  q tick++/src/hdb.q \
+  q scaled-tick++/src/hdb.q \
     -p ${HDB_EXTRA_PORTS[$i]} -s $s_flag \
     -hdbDir $HDB_DIR \
     -procName HDB_EXTRA_$i \
@@ -101,7 +101,7 @@ for ((i=0; i<m_flag; i++)); do
 done
 
 # ── Feedhandler ───────────────────────────────────────────────────────────
-q tick++/src/fh.q \
+q scaled-tick++/src/fh.q \
   -p $FH_PORT -s $s_flag \
   -fhDir $FH_ANALYTIC_DIR -fhTimer $FH_TIMER \
   -tpPort $TICK_PORT \
@@ -110,7 +110,7 @@ q tick++/src/fh.q \
 echo -e "  Started FH\t\t[$FH_PORT]"
 
 # ── Real-Time Engine ──────────────────────────────────────────────────────
-q tick++/src/rte.q \
+q scaled-tick++/src/rte.q \
   -p $RTE_PORT -s $s_flag \
   -enrichFile $RTE_ENRICH_FILE \
   -tpPort $TICK_PORT \
@@ -119,7 +119,7 @@ q tick++/src/rte.q \
 echo -e "  Started RTE\t\t[$RTE_PORT]"
 
 # ── Gateway (q-IPC) ───────────────────────────────────────────────────────
-q tick++/src/gw.q \
+q scaled-tick++/src/gw.q \
   -p $GW_PORT -s $s_flag \
   -rdbPort $RDB_PORT \
   -crdbPort ${RDB_CHAIN_PORTS[*]} \

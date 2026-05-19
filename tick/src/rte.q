@@ -1,6 +1,6 @@
-// tick/tick/rte.q - Real-Time Engine (Enrichment Process)
+// tick/src/rte.q - Real-Time Engine (Enrichment Process)
 //
-// q tick/tick/rte.q -p $RTE_PORT -tpPort $TICK_PORT [-enrichFile <path>] -procName RTE
+// q tick/src/rte.q -p $RTE_PORT -tpPort $TICK_PORT [-enrichFile <path>] -procName RTE
 //
 // Single instance, lives in the realtime module alongside the RDB. Starts with no
 // enrichments registered — the registration API below is the extension point.

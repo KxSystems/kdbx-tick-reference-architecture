@@ -1,6 +1,6 @@
-// tick/tick/u.q - Pub/Sub Tickerplant Functionality
+// tick/src/u.q - Pub/Sub Tickerplant Functionality
 //
-// Helper functions used by tick/tick/tick.q
+// Helper functions used by tick/src/tick.q
 //
 // See https://github.com/KxSystems/kdb-tick for more context
 

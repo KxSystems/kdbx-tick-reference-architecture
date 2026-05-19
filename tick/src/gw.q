@@ -1,6 +1,6 @@
-// tick/tick/gw.q - Gateway Process (q-IPC + REST)
+// tick/src/gw.q - Gateway Process (q-IPC + REST)
 //
-// q tick/tick/gw.q -p $GW_PORT -rdbPort $RDB_PORT -hdbPort $HDB_PORT \
+// q tick/src/gw.q -p $GW_PORT -rdbPort $RDB_PORT -hdbPort $HDB_PORT \
 //                  -analyticsDir $ANALYTIC_DIR -procName GW
 //
 // Routes queries from q-IPC and REST clients to a single RDB and a single HDB.

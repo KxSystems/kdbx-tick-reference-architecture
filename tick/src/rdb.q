@@ -1,6 +1,6 @@
-// tick/tick/rdb.q - Realtime Database Process
+// tick/src/rdb.q - Realtime Database Process
 //
-// q tick/tick/rdb.q -p $RDB_PORT -tpPort $TICK_PORT -hdbPort $HDB_PORT \
+// q tick/src/rdb.q -p $RDB_PORT -tpPort $TICK_PORT -hdbPort $HDB_PORT \
 //                   -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -procName RDB
 //
 // Subscribes to the Tickerplant (with exponential-backoff retry), holds today's

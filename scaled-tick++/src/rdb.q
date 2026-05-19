@@ -1,8 +1,8 @@
-// tick++/src/rdb.q - Realtime Database Process (Leader / Chain follower)
+// scaled-tick++/src/rdb.q - Realtime Database Process (Leader / Chain follower)
 //
-// q tick++/src/rdb.q -p $RDB_PORT       -tpPort $TICK_PORT -hdbPort $HDB_PORTS \
+// q scaled-tick++/src/rdb.q -p $RDB_PORT       -tpPort $TICK_PORT -hdbPort $HDB_PORTS \
 //                     -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -procName RDB
-// q tick++/src/rdb.q -p $RDB_CHAIN_PORT -tpPort $TICK_PORT -hdbPort $HDB_PORTS \
+// q scaled-tick++/src/rdb.q -p $RDB_CHAIN_PORT -tpPort $TICK_PORT -hdbPort $HDB_PORTS \
 //                     -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -procName RDB_CHAIN_<N>
 //
 // Subscribes to the Tickerplant (with exponential-backoff retry) and holds today's
@@ -15,7 +15,7 @@
 
 if[not "w"=first string .z.o;system "sleep 1"];
 
-system"l tick++/utils/main.q";
+system"l scaled-tick++/utils/main.q";
 
 .log.info["Initialising RDB"];
 

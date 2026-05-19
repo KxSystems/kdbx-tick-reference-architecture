@@ -72,7 +72,7 @@ mkdir -p $TPLOG_DIR $HDB_DIR $PROCESS_LOG_DIR
 To run the system, execute the startup script from the project root:
 
 ```bash
-$ ./tick++/scripts/startup.sh
+$ ./scaled-tick++/scripts/startup.sh
 Starting Tick Reference Architecture...
   .env:             [.env]
   Secondaries:      [0]
@@ -91,7 +91,7 @@ Stack started. Logs: app/proclogs/startup.log
 This assumes `.env` is in the project root. For a file stored elsewhere use the `-e` flag:
 
 ```bash
-$ ./tick++/scripts/startup.sh -e /path/to/.env
+$ ./scaled-tick++/scripts/startup.sh -e /path/to/.env
 ```
 
 <details>
@@ -106,7 +106,7 @@ $ ./tick++/scripts/startup.sh -e /path/to/.env
   Reference: https://code.kx.com/q/basics/cmdline/#-s-secondary-threads
 
   ```bash
-  $ ./tick++/scripts/startup.sh -s 4
+  $ ./scaled-tick++/scripts/startup.sh -s 4
   ```
 
 - **-m**
@@ -118,7 +118,7 @@ $ ./tick++/scripts/startup.sh -e /path/to/.env
   Reference: https://code.kx.com/q/kb/kdb-tick/#chained-rdbs
 
   ```bash
-  $ ./tick++/scripts/startup.sh -m 1
+  $ ./scaled-tick++/scripts/startup.sh -m 1
   ```
 
 </details>
@@ -128,7 +128,7 @@ $ ./tick++/scripts/startup.sh -e /path/to/.env
 To stop the system run the shutdown script from the project root:
 
 ```bash
-$ ./tick++/scripts/shutdown.sh
+$ ./scaled-tick++/scripts/shutdown.sh
 Killing processes:
   TP     [118666]
   RDB    [118667]
@@ -186,9 +186,9 @@ All processes write structured logs to `PROCESS_LOG_DIR` in the format `<procNam
 To restart a single named process without taking down the whole stack:
 
 ```bash
-$ ./tick++/scripts/restart.sh GW
-$ ./tick++/scripts/restart.sh RTE
-$ ./tick++/scripts/restart.sh RDB_CHAIN_0 -m 1
+$ ./scaled-tick++/scripts/restart.sh GW
+$ ./scaled-tick++/scripts/restart.sh RTE
+$ ./scaled-tick++/scripts/restart.sh RDB_CHAIN_0 -m 1
 ```
 
 To identify running processes:
@@ -388,10 +388,10 @@ The `utils/rotate-logs.sh` script deletes old process log and tickerplant log fi
 
 ```bash
 # Delete proclogs and tplogs older than 7 days (default)
-$ ./tick++/utils/rotate-logs.sh
+$ ./scaled-tick++/utils/rotate-logs.sh
 
 # Keep only 3 days of proclogs, 14 days of tplogs
-$ ./tick++/utils/rotate-logs.sh --keep-days 3 --tp-keep-days 14
+$ ./scaled-tick++/utils/rotate-logs.sh --keep-days 3 --tp-keep-days 14
 ```
 
 The script preserves `startup.log` regardless of age.
@@ -416,7 +416,7 @@ Additional logic allows multiple separately-defined functions to be called on a 
 `scripts/fh-timer.sh` must be sourced to expose two functions for dynamic timer control. Both functions open and close an IPC connection inline, allowing interval adjustments at runtime without restarting the FH process.
 
 ```bash
-source ./tick++/scripts/fh-timer.sh
+source ./scaled-tick++/scripts/fh-timer.sh
 start_fh_timer   # enable ingest at $FH_TIMER ms intervals
 stop_fh_timer    # pause ingest
 ```
@@ -426,7 +426,7 @@ stop_fh_timer    # pause ingest
 An end-to-end test suite is provided at `tests/e2e-test.q`. It covers data ingestion, q-IPC and REST queries, EOD, failover, and operational scripts. Run it from the project root after starting the stack:
 
 ```bash
-source .env && q tick++/tests/e2e-test.q -gwPort $GW_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
+source .env && q scaled-tick++/tests/e2e-test.q -gwPort $GW_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
 ```
 
 Results are written to `app/proclogs/e2e_<datetime>.log` in the same structured format as all other process logs.
@@ -439,7 +439,7 @@ Results are written to `app/proclogs/e2e_<datetime>.log` in the same structured 
 <summary>Initial Directory Tree</summary>
 
 ```
-tick++/
+scaled-tick++/
 ├── README.md
 ├── scripts/
 │   ├── fh-timer.sh

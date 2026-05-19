@@ -4,7 +4,7 @@
 # Source this file to expose start_fh_timer and stop_fh_timer functions.
 #
 # Usage:
-#   source ./tick++/scripts/fh-timer.sh [-e envFile]
+#   source ./scaled-tick++/scripts/fh-timer.sh [-e envFile]
 #   start_fh_timer   # enable ingest at $FH_TIMER ms intervals
 #   stop_fh_timer    # pause ingest
 
@@ -13,7 +13,7 @@ e_flag=".env"
 while getopts 'e:' flag; do
   case "${flag}" in
     e) e_flag="${OPTARG}" ;;
-    *) printf "Usage: source ./tick++/scripts/fh-timer.sh [-e envFile]\n"; return 1 ;;
+    *) printf "Usage: source ./scaled-tick++/scripts/fh-timer.sh [-e envFile]\n"; return 1 ;;
   esac
 done
 
