@@ -1,6 +1,6 @@
-// tick++/tick/fh.q - Feedhandler Process
+// tick++/src/fh.q - Feedhandler Process
 //
-// q tick++/tick/fh.q -p $FH_PORT -tpPort $TICK_PORT -fhDir $FH_ANALYTIC_DIR \
+// q tick++/src/fh.q -p $FH_PORT -tpPort $TICK_PORT -fhDir $FH_ANALYTIC_DIR \
 //                    -fhTimer $FH_TIMER -procName FH
 //
 // Connects to the Tickerplant with exponential-backoff retry, loads every `.q` analytic file

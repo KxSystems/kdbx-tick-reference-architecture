@@ -1,8 +1,8 @@
-// tick++/tick/rdb.q - Realtime Database Process (Leader / Chain follower)
+// tick++/src/rdb.q - Realtime Database Process (Leader / Chain follower)
 //
-// q tick++/tick/rdb.q -p $RDB_PORT       -tpPort $TICK_PORT -hdbPort $HDB_PORTS \
+// q tick++/src/rdb.q -p $RDB_PORT       -tpPort $TICK_PORT -hdbPort $HDB_PORTS \
 //                     -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -procName RDB
-// q tick++/tick/rdb.q -p $RDB_CHAIN_PORT -tpPort $TICK_PORT -hdbPort $HDB_PORTS \
+// q tick++/src/rdb.q -p $RDB_CHAIN_PORT -tpPort $TICK_PORT -hdbPort $HDB_PORTS \
 //                     -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -procName RDB_CHAIN_<N>
 //
 // Subscribes to the Tickerplant (with exponential-backoff retry) and holds today's

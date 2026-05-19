@@ -103,7 +103,7 @@ Killing processes:
 
 ### Data Ingestion
 
-The feedhandler publishes one synthetic row each to the `energy` and `weather` tables on every timer tick. The publishing logic is a pair of direct ``neg[TP_H] (`.u.upd; <table>; <row data>)`` calls inside ``.timer.funcs[`fhUpsert]`` in `tick/tick/fh.q` — there is no parser dispatcher or analytics directory to load from. Customise by replacing the row construction with your own data source / transformation.
+The feedhandler publishes one synthetic row each to the `energy` and `weather` tables on every timer tick. The publishing logic is a pair of direct ``neg[TP_H] (`.u.upd; <table>; <row data>)`` calls inside ``.timer.funcs[`fhUpsert]`` in `tick/src/fh.q` — there is no parser dispatcher or analytics directory to load from. Customise by replacing the row construction with your own data source / transformation.
 
 The interval is set by `FH_TIMER` and can be overridden at runtime using the `scripts/fh-timer.sh` script.
 
@@ -282,7 +282,7 @@ Logs the q command used to start the current process.
 
 ```q
 q) .log.procStarted["Tickerplant"];
-2026.05.06D09:07:36.465107038 info PID[71505] HOST[hostname] TP started using command: q tick/tick/tick.q ...
+2026.05.06D09:07:36.465107038 info PID[71505] HOST[hostname] TP started using command: q tick/src/tick.q ...
 ```
 
 ### .log.rollover
@@ -325,7 +325,7 @@ The default log level is `info` (set in the `Configuration` block of `tick/scrip
 | Method | Example | Scope |
 |--------|---------|-------|
 | Edit `LOG_LEVEL` in `tick/scripts/startup.sh` | `LOG_LEVEL="debug"` | All processes launched by the script |
-| CLI arg `-logLevel` | `q tick/tick/rte.q ... -logLevel debug ...` | One process (takes precedence over env) |
+| CLI arg `-logLevel` | `q tick/src/rte.q ... -logLevel debug ...` | One process (takes precedence over env) |
 
 Accepted values: `trace`, `debug`, `info`, `warn`, `error`, `fatal`. Anything else logs a `warn` on startup and the level stays at `info`. When the effective level is not `info`, the process logs `Log level set to [<level>]` as its first info line.
 

@@ -55,7 +55,7 @@ echo -e "  Chained RDBs:     [$m_flag]"
 echo ""
 
 # ── Tickerplant ──────────────────────────────────────────────────────────
-q tick++/tick/tick.q \
+q tick++/src/tick.q \
   -p $TICK_PORT -s $s_flag \
   -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR \
   -procName TP \
@@ -63,7 +63,7 @@ q tick++/tick/tick.q \
 echo -e "  Started TP\t\t[$TICK_PORT]"
 
 # ── RDB (realtime leader) ────────────────────────────────────────────────
-q tick++/tick/rdb.q \
+q tick++/src/rdb.q \
   -p $RDB_PORT -s $s_flag \
   -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
   -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
@@ -73,7 +73,7 @@ echo -e "  Started RDB\t\t[$RDB_PORT]"
 
 # ── Chained RDB replicas (failover followers) ────────────────────────────
 for ((i=0; i<m_flag; i++)); do
-  q tick++/tick/rdb.q \
+  q tick++/src/rdb.q \
     -p ${RDB_CHAIN_PORTS[$i]} -s $s_flag \
     -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
     -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
@@ -83,7 +83,7 @@ for ((i=0; i<m_flag; i++)); do
 done
 
 # ── HDB (base) ────────────────────────────────────────────────────────────
-q tick++/tick/hdb.q \
+q tick++/src/hdb.q \
   -p $HDB_PORT -s $s_flag \
   -hdbDir $HDB_DIR \
   -procName HDB \
@@ -92,7 +92,7 @@ echo -e "  Started HDB\t\t[$HDB_PORT]"
 
 # ── Extra HDBs (paired with chained RDB replicas) ────────────────────────
 for ((i=0; i<m_flag; i++)); do
-  q tick++/tick/hdb.q \
+  q tick++/src/hdb.q \
     -p ${HDB_EXTRA_PORTS[$i]} -s $s_flag \
     -hdbDir $HDB_DIR \
     -procName HDB_EXTRA_$i \
@@ -101,7 +101,7 @@ for ((i=0; i<m_flag; i++)); do
 done
 
 # ── Feedhandler ───────────────────────────────────────────────────────────
-q tick++/tick/fh.q \
+q tick++/src/fh.q \
   -p $FH_PORT -s $s_flag \
   -fhDir $FH_ANALYTIC_DIR -fhTimer $FH_TIMER \
   -tpPort $TICK_PORT \
@@ -110,7 +110,7 @@ q tick++/tick/fh.q \
 echo -e "  Started FH\t\t[$FH_PORT]"
 
 # ── Real-Time Engine ──────────────────────────────────────────────────────
-q tick++/tick/rte.q \
+q tick++/src/rte.q \
   -p $RTE_PORT -s $s_flag \
   -enrichFile $RTE_ENRICH_FILE \
   -tpPort $TICK_PORT \
@@ -119,7 +119,7 @@ q tick++/tick/rte.q \
 echo -e "  Started RTE\t\t[$RTE_PORT]"
 
 # ── Gateway (q-IPC) ───────────────────────────────────────────────────────
-q tick++/tick/gw.q \
+q tick++/src/gw.q \
   -p $GW_PORT -s $s_flag \
   -rdbPort $RDB_PORT \
   -crdbPort ${RDB_CHAIN_PORTS[*]} \

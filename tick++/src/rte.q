@@ -1,6 +1,6 @@
-// tick++/tick/rte.q - Real-Time Engine (Enrichment Process)
+// tick++/src/rte.q - Real-Time Engine (Enrichment Process)
 //
-// q tick++/tick/rte.q -p $RTE_PORT -tpPort $TICK_PORT -enrichFile $RTE_ENRICH_FILE \
+// q tick++/src/rte.q -p $RTE_PORT -tpPort $TICK_PORT -enrichFile $RTE_ENRICH_FILE \
 //                     -procName RTE
 //
 // Loads an enrichment file which registers TP subscriptions and enrichment functions:

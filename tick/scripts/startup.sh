@@ -68,7 +68,7 @@ echo ""
 ###############
 # Tickerplant #
 ###############
-q tick/tick/tick.q \
+q tick/src/tick.q \
   -p $TICK_PORT -s $s_flag \
   -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR \
   -procName TP \
@@ -78,7 +78,7 @@ echo -e "  Started TP\t[$TICK_PORT]"
 #######
 # RDB #
 #######
-q tick/tick/rdb.q \
+q tick/src/rdb.q \
   -p $RDB_PORT -s $s_flag \
   -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
   -tpPort $TICK_PORT -hdbPort $HDB_PORT \
@@ -89,7 +89,7 @@ echo -e "  Started RDB\t[$RDB_PORT]"
 #######
 # HDB #
 #######
-q tick/tick/hdb.q \
+q tick/src/hdb.q \
   -p $HDB_PORT -s $s_flag \
   -hdbDir $HDB_DIR \
   -procName HDB \
@@ -99,7 +99,7 @@ echo -e "  Started HDB\t[$HDB_PORT]"
 ###############
 # Feedhandler #
 ###############
-q tick/tick/fh.q \
+q tick/src/fh.q \
   -p $FH_PORT -s $s_flag \
   -fhTimer $FH_TIMER \
   -tpPort $TICK_PORT \
@@ -110,7 +110,7 @@ echo -e "  Started FH\t[$FH_PORT]"
 ####################
 # Real-time Engine #
 ####################
-q tick/tick/rte.q \
+q tick/src/rte.q \
   -p $RTE_PORT -s $s_flag \
   -tpPort $TICK_PORT \
   -procName RTE \
@@ -120,7 +120,7 @@ echo -e "  Started RTE\t[$RTE_PORT]"
 ###########
 # Gateway #
 ###########
-q tick/tick/gw.q \
+q tick/src/gw.q \
   -p $GW_PORT -s $s_flag \
   -rdbPort $RDB_PORT \
   -hdbPort $HDB_PORT \

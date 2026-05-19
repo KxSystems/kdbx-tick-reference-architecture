@@ -1,7 +1,7 @@
-// tick++/tick/hdb.q - Historical Database Process
+// tick++/src/hdb.q - Historical Database Process
 //
-// q tick++/tick/hdb.q -p $HDB_PORT -hdbDir $HDB_DIR -procName HDB
-// q tick++/tick/hdb.q -p $HDB_EXTRA_PORT -hdbDir $HDB_DIR -procName HDB_EXTRA_<N>
+// q tick++/src/hdb.q -p $HDB_PORT -hdbDir $HDB_DIR -procName HDB
+// q tick++/src/hdb.q -p $HDB_EXTRA_PORT -hdbDir $HDB_DIR -procName HDB_EXTRA_<N>
 //
 // Loads the on-disk partitioned database from `-hdbDir` and serves queries from the gateway.
 // Started in two flavours: the base HDB (always) and one HDB_EXTRA_<N> per chained RDB_CHAIN_<N>

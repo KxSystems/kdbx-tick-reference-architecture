@@ -1,4 +1,4 @@
-// tick++/tick/tick.q - Tickerplant Process (RDB leader/follower-aware)
+// tick++/src/tick.q - Tickerplant Process (RDB leader/follower-aware)
 //
 // Globals used:
 //   .u.w                - dictionary of tables->(handle;syms)
@@ -10,7 +10,7 @@
 //   .u.d                - date
 //   .u.RDB_CONNECTIONS  - keyed table of (handle; procName; alive; leader) for tracked RDB / RDB_CHAIN
 //
-// q tick++/tick/tick.q -p $TICK_PORT -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR -procName TP
+// q tick++/src/tick.q -p $TICK_PORT -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR -procName TP
 //
 // Loads every `.q` schema from $SCHEMA_DIR, opens (or rotates) the TP log under
 // $TPLOG_NAME/$TPLOG_DIR, accepts subscriptions from RDB / RDB_CHAIN / RTE / other clients,
@@ -57,7 +57,7 @@ system"l tick++/utils/main.q";
 
 if[not system"p";system"p 5010"];
 
-\l tick++/tick/u.q
+\l tick++/src/u.q
 \d .u
 
 // @desc Open or rotate the tickerplant log for date `x`

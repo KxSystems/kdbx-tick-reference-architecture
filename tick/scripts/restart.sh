@@ -75,7 +75,7 @@ echo "Restarting [$proc_name]..."
 case "$proc_name" in
   TP)
     kill_proc "TP"
-    q tick/tick/tick.q -p $TICK_PORT -s $s_flag \
+    q tick/src/tick.q -p $TICK_PORT -s $s_flag \
       -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR \
       -procName TP < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
     echo "  Started TP [$TICK_PORT]"
@@ -83,7 +83,7 @@ case "$proc_name" in
 
   RDB)
     kill_proc "RDB"
-    q tick/tick/rdb.q -p $RDB_PORT -s $s_flag \
+    q tick/src/rdb.q -p $RDB_PORT -s $s_flag \
       -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
       -tpPort $TICK_PORT -hdbPort $HDB_PORT \
       -procName RDB < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
@@ -92,7 +92,7 @@ case "$proc_name" in
 
   HDB)
     kill_proc "HDB"
-    q tick/tick/hdb.q -p $HDB_PORT -s $s_flag \
+    q tick/src/hdb.q -p $HDB_PORT -s $s_flag \
       -hdbDir $HDB_DIR \
       -procName HDB < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
     echo "  Started HDB [$HDB_PORT]"
@@ -100,7 +100,7 @@ case "$proc_name" in
 
   FH)
     kill_proc "FH"
-    q tick/tick/fh.q -p $FH_PORT -s $s_flag \
+    q tick/src/fh.q -p $FH_PORT -s $s_flag \
       -fhTimer $FH_TIMER \
       -tpPort $TICK_PORT \
       -procName FH < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
@@ -109,7 +109,7 @@ case "$proc_name" in
 
   RTE)
     kill_proc "RTE"
-    q tick/tick/rte.q -p $RTE_PORT -s $s_flag \
+    q tick/src/rte.q -p $RTE_PORT -s $s_flag \
       -tpPort $TICK_PORT \
       -procName RTE < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
     echo "  Started RTE [$RTE_PORT]"
@@ -117,7 +117,7 @@ case "$proc_name" in
 
   GW)
     kill_proc "GW"
-    q tick/tick/gw.q -p $GW_PORT -s $s_flag \
+    q tick/src/gw.q -p $GW_PORT -s $s_flag \
       -rdbPort $RDB_PORT \
       -hdbPort $HDB_PORT \
       -analyticsDir $ANALYTIC_DIR \
