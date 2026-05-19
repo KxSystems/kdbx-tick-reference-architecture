@@ -179,17 +179,9 @@ myEnrichment:{[data]
 
 </details>
 
-### Monitoring
+### Restart Individual Processes
 
-All processes write structured logs to `PROCESS_LOG_DIR` in the format `<procName>_<datetime>.log`. The `scripts/monitor.sh` watchdog script checks whether each process is alive and restarts any that have died.
-
-```bash
-# Check and restart any dead processes
-$ ./tick++/scripts/monitor.sh
-
-# Run as a cron job every minute
-* * * * * cd /path/to/kdbx-tick-reference-architecture && ./tick++/scripts/monitor.sh -e .env >> app/proclogs/monitor-cron.log 2>&1
-```
+All processes write structured logs to `PROCESS_LOG_DIR` in the format `<procName>_<datetime>.log`.
 
 To restart a single named process without taking down the whole stack:
 
@@ -451,7 +443,6 @@ tick++/
 ├── README.md
 ├── scripts/
 │   ├── fh-timer.sh
-│   ├── monitor.sh
 │   ├── restart.sh
 │   ├── shutdown.sh
 │   └── startup.sh

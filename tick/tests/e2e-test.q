@@ -5,8 +5,7 @@
 //   Phase 3  — q-IPC query tests (delegates to api-test.q)
 //   Phase 5  — EOD trigger + HDB verification
 //   Phase 6  — REST endpoint tests post-EOD (delegates to rest-test.q)
-//   Phase 7a — monitor.sh watchdog (kills FH, expects restart)
-//   Phase 7b — restart.sh GW (kills GW, expects restart)
+//   Phase 7  — restart.sh GW (kills GW, expects restart)
 //
 // Usage (from project root):
 //   q tick/tests/e2e-test.q -gwPort 5013 -tpPort 5010 -fhPort 5014 -procName e2e
@@ -104,25 +103,8 @@ restCmd:"q tick/tests/rest-test.q -gwPort ",string[GW_PORT]," 2>&1";
 .log.info["Running: q tick/tests/rest-test.q -gwPort ",string GW_PORT];
 .t.check["rest-test.q passed"; {x}; .t.runScript[restCmd]];
 
-// ── Phase 7a: monitor.sh watchdog ────────────────────────────────────────
-.t.section "Phase 7a: monitor.sh watchdog";
-
-fhPid:.t.findPid["FH"];
-fhPidI:.t.toPid[fhPid];
-.t.check["FH process found before kill"; {not null x}; fhPidI];
-
-if[not null fhPidI;
-    .log.info["Killing FH (pid ",fhPid,")..."];
-    system "kill -9 ",fhPid;
-    system "sleep 0.5";
-    system "./tick/scripts/monitor.sh";
-    system "sleep 2";
-    newFhPid:.t.findPid["FH"];
-    .t.check["monitor.sh restarted FH"; {not null .t.toPid x}; newFhPid];
- ];
-
-// ── Phase 7b: restart.sh GW ──────────────────────────────────────────────
-.t.section "Phase 7b: restart.sh GW";
+// ── Phase 7: restart.sh GW ───────────────────────────────────────────────
+.t.section "Phase 7: restart.sh GW";
 
 gwPid:.t.findPid["GW"];
 gwPidI:.t.toPid[gwPid];

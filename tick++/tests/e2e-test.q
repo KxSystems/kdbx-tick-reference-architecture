@@ -7,8 +7,7 @@
 //   Phase 5  — EOD trigger + HDB verification
 //   Phase 6  — REST endpoint tests post-EOD (delegates to rest-test.q)
 //   Phase 7  — RDB leader failover to RDB_CHAIN_0
-//   Phase 8a — monitor.sh watchdog (kills FH, expects restart)
-//   Phase 8b — restart.sh GW (kills GW, expects restart)
+//   Phase 8  — restart.sh GW (kills GW, expects restart)
 //
 // Usage (from project root):
 //   source .env && q tick++/tests/e2e-test.q -gwPort $GW_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
@@ -134,25 +133,8 @@ if[not null rdbPidI;
         failRes];
  ];
 
-// ── Phase 8a: monitor.sh watchdog ────────────────────────────────────────
-.t.section "Phase 8a: monitor.sh watchdog";
-
-fhPid:.t.findPid["FH"];
-fhPidI:.t.toPid[fhPid];
-.t.check["FH process found before kill"; {not null x}; fhPidI];
-
-if[not null fhPidI;
-    .log.info["Killing FH (pid ",fhPid,")..."];
-    system "kill -9 ",fhPid;
-    system "sleep 0.5";
-    system "./tick++/scripts/monitor.sh -e .env -m 1";
-    system "sleep 2";
-    newFhPid:.t.findPid["FH"];
-    .t.check["monitor.sh restarted FH"; {not null .t.toPid x}; newFhPid];
- ];
-
-// ── Phase 8b: restart.sh GW ──────────────────────────────────────────────
-.t.section "Phase 8b: restart.sh GW";
+// ── Phase 8: restart.sh GW ───────────────────────────────────────────────
+.t.section "Phase 8: restart.sh GW";
 
 gwPid:.t.findPid["GW"];
 gwPidI:.t.toPid[gwPid];

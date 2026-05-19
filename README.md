@@ -39,7 +39,6 @@ kdbx-tick-reference-architecture/
 │   ├── README.md
 │   ├── scripts/
 │   │   ├── fh-timer.sh
-│   │   ├── monitor.sh
 │   │   ├── restart.sh
 │   │   ├── shutdown.sh
 │   │   └── startup.sh
@@ -64,7 +63,6 @@ kdbx-tick-reference-architecture/
     ├── README.md
     ├── scripts/
     │   ├── fh-timer.sh
-    │   ├── monitor.sh
     │   ├── restart.sh
     │   ├── shutdown.sh
     │   └── startup.sh
