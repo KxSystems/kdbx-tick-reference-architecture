@@ -8,13 +8,17 @@ Each reference architecture contains a detailed README on how to deploy the arch
 
 ## Repository
 
-You can find 2 different architecture configurations within this repository:
+You can find 3 different architecture configurations within this repository:
 
 ### [tick](./tick/README.md)
 
 - basic Tick architecture with some additional customization beyond the barebones [KDB-X System Architecure](https://code.kx.com/kdb-x/how_to/manage_streaming_data/architecture.html) outlined in the KDB-X documentation
 
-### [tick++](./scaled-tick++/README.md) 
+### [tick++](./tick++/README.md)
+
+- An extension of base Tick that introduces an intraday writedown path. The main RDB is dedicated to receiving TP data and periodically flushing int-partitions to disk; a chained RDB subscribes to the TP in parallel and serves all `rdb` queries (so the writedown RDB never blocks); an IDB process loads the flushed int-partitions and serves them as the `idb` tier through the gateway
+
+### [scaled-tick++](./scaled-tick++/README.md)
 
 - A scalable version of Tick++ that integrates realtime + batch ingestion, asynchronous query gateway, query routing, and dynamic scaling. This is an extension of the [Scalable KDB-X Architecture](https://code.kx.com/kdb-x/how_to/manage_streaming_data/kdb-tick.html) illustrated in the KDB-X docs
 
@@ -27,6 +31,7 @@ You can find 2 different architecture configurations within this repository:
 kdbx-tick-reference-architecture/
 ├── app/
 │   ├── hdb/
+│   ├── idb/
 │   ├── proclogs/
 │   └── tplogs/
 ├── samples/
@@ -42,11 +47,7 @@ kdbx-tick-reference-architecture/
 │   │   ├── restart.sh
 │   │   ├── shutdown.sh
 │   │   └── startup.sh
-│   ├── tests/
-│   │   ├── api-test.q
-│   │   ├── e2e-test.q
-│   │   └── rest-test.q
-│   ├── tick/
+│   ├── src/
 │   │   ├── client.q
 │   │   ├── fh.q
 │   │   ├── gw.q
@@ -55,6 +56,36 @@ kdbx-tick-reference-architecture/
 │   │   ├── rte.q
 │   │   ├── tick.q
 │   │   └── u.q
+│   ├── tests/
+│   │   ├── api-test.q
+│   │   ├── e2e-test.q
+│   │   └── rest-test.q
+│   └── utils/
+│       ├── logging.q
+│       ├── main.q
+│       └── timer.q
+├── tick++/
+│   ├── README.md
+│   ├── scripts/
+│   │   ├── fh-timer.sh
+│   │   ├── restart.sh
+│   │   ├── shutdown.sh
+│   │   └── startup.sh
+│   ├── src/
+│   │   ├── client.q
+│   │   ├── fh.q
+│   │   ├── gw.q
+│   │   ├── hdb.q
+│   │   ├── idb.q
+│   │   ├── rdb.q
+│   │   ├── chainedrdb.q
+│   │   ├── rte.q
+│   │   ├── tick.q
+│   │   └── u.q
+│   ├── tests/
+│   │   ├── api-test.q
+│   │   ├── e2e-test.q
+│   │   └── rest-test.q
 │   └── utils/
 │       ├── logging.q
 │       ├── main.q
@@ -66,11 +97,7 @@ kdbx-tick-reference-architecture/
     │   ├── restart.sh
     │   ├── shutdown.sh
     │   └── startup.sh
-    ├── tests/
-    │   ├── api-test.q
-    │   ├── e2e-test.q
-    │   └── rest-test.q
-    ├── tick/
+    ├── src/
     │   ├── client.q
     │   ├── fh.q
     │   ├── gw.q
@@ -79,6 +106,10 @@ kdbx-tick-reference-architecture/
     │   ├── rte.q
     │   ├── tick.q
     │   └── u.q
+    ├── tests/
+    │   ├── api-test.q
+    │   ├── e2e-test.q
+    │   └── rest-test.q
     └── utils/
         ├── logging.q
         ├── main.q
