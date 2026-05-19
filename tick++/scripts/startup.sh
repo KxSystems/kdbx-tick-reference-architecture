@@ -46,7 +46,7 @@ FH_TIMER=60000
 FLUSH_INTV_MIN=5
 
 # Export values read by q processes via getenv
-export SCHEMA_DIR TPLOG_NAME LOG_LEVEL
+export SCHEMA_DIR TPLOG_NAME LOG_LEVEL PROCESS_LOG_DIR
 
 ###############
 # CLI-parsing #

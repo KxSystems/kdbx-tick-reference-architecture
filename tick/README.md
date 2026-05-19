@@ -163,7 +163,7 @@ The gateway connects to the RDB and HDB on startup. If a process is restarted wh
 The gateway exposes `.kxgw.query[target; query]` for synchronous queries from q clients:
 
 ```q
-gwh: hopen `$"::",string GW_PORT
+gwh: hopen 5013
 
 // Query the RDB
 gwh (`.kxgw.query; `rdb; "select from energy")

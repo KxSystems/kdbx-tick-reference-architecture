@@ -39,7 +39,7 @@ RTE_PORT=5016
 FH_TIMER=60000
 
 # Export values read by q processes via getenv
-export SCHEMA_DIR TPLOG_NAME LOG_LEVEL
+export SCHEMA_DIR TPLOG_NAME LOG_LEVEL PROCESS_LOG_DIR
 
 ###############
 # CLI-parsing #
