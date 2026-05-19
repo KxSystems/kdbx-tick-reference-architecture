@@ -10,7 +10,7 @@
 
 system"l tick++/utils/main.q";
 
-.log.info["Initialising IDB"];
+.log.info["Initializing IDB"];
 
 // @desc Staging directory (hsym) — root of <idbDir>/today/<i>/<table>/
 .idb.dir:` sv (hsym `$first CLI_ARGS[`idbDir]),`today;
@@ -71,4 +71,4 @@ system"cd ",.idb.hdb;
 // One-minute housekeeping timer (used by `.timer.funcs`)
 system"t 60000";
 
-.log.info[("IDB successfully initialised on port [%s]"; `long$first system"p")];
+.log.info[("IDB successfully initialized on port [%s]"; `long$first system"p")];

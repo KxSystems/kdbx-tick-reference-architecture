@@ -9,7 +9,7 @@
 // Load utility scripts
 system"l tick++/utils/main.q";
 
-.log.info["Initialising HDB"];
+.log.info["Initializing HDB"];
 
 // Mount the on-disk historical database
 system"l ",first CLI_ARGS[`hdbDir];
@@ -32,4 +32,4 @@ system"l ",first CLI_ARGS[`hdbDir];
 // One-minute housekeeping timer (used by `.timer.funcs`)
 system"t 60000";
 
-.log.info[("HDB successfully initialised. Loaded tables [%s] from [%s]";`#tables[];first system"pwd")];
+.log.info[("HDB successfully initialized. Loaded tables [%s] from [%s]";`#tables[];first system"pwd")];

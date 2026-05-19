@@ -9,7 +9,7 @@
 
 system"l tick/utils/main.q";
 
-.log.info["Initialising GW"];
+.log.info["Initializing GW"];
 
 .log.info[enlist["Connecting to DB processes [RDB port: %s] [HDB port: %s]"],
     (CLI_ARGS[`rdbPort]; CLI_ARGS[`hdbPort])];
@@ -91,8 +91,8 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
 // @desc Alias used by REST analytics handlers — identical to `.kxgw.query`
 .restgw.query:.kxgw.query;
 
-// REST server bootstrap — initialise kx.rest and load every analytic from `-analyticsDir`
-.log.info["Initialising REST server"];
+// REST server bootstrap — initialize kx.rest and load every analytic from `-analyticsDir`
+.log.info["Initializing REST server"];
 .rest:use`kx.rest;
 .rest.init enlist[`autoBind]!enlist[1b];
 
@@ -110,4 +110,4 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
 
 system"t 60000";
 
-.log.info[("GW successfully initialised on port [%s]"; `long$first system"p")];
+.log.info[("GW successfully initialized on port [%s]"; `long$first system"p")];

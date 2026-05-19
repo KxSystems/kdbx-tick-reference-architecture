@@ -16,7 +16,7 @@ You can find 3 different architecture configurations within this repository:
 
 ### [tick++](./tick++/README.md)
 
-- An extension of base Tick that introduces an intraday writedown path. The main RDB is dedicated to receiving TP data and periodically flushing int-partitions to disk; a chained RDB subscribes to the TP in parallel and serves all `rdb` queries (so the writedown RDB never blocks); an IDB process loads the flushed int-partitions and serves them as the `idb` tier through the gateway
+- An extension of base Tick that introduces an intraday database and writedown only RDB process. The main RDB is dedicated to receiving TP data and periodically flushing int-partitions to disk; a chained RDB subscribes to the TP in parallel and serves all `rdb` queries (so the writedown RDB never blocks); an IDB process loads the flushed int-partitions and serves them as the `idb` tier through the gateway
 
 ### [scaled-tick++](./scaled-tick++/README.md)
 

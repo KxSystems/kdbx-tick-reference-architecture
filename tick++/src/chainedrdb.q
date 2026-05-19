@@ -13,7 +13,7 @@ if[not "w"=first string .z.o;system "sleep 1"];
 
 system"l tick++/utils/main.q";
 
-.log.info["Initialising CHAINED_RDB (query role)"];
+.log.info["Initializing CHAINED_RDB (query role)"];
 
 // @desc Standard kdb-tick subscriber upd hook — append rows into the matching root table
 // Emits a `[FLOW CHAINED_RDB] upd received` debug line per call so the publish path is traceable.
@@ -118,4 +118,4 @@ if[not .rdb.connectTPWithRetry[10];
 // 60s housekeeping timer (reconnect, log rollover, etc.)
 system"t 60000";
 
-.log.info[("CHAINED_RDB (query) initialised on port [%s] HDB location [%s]";`long$first system"p";first system"pwd")];
+.log.info[("CHAINED_RDB (query) initialized on port [%s] HDB location [%s]";`long$first system"p";first system"pwd")];

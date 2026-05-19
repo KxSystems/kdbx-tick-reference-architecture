@@ -142,7 +142,7 @@ Killing processes:
 
 Within the feedhandler, custom parsers are loaded dynamically from the `fh-analytics` directory and executed via the `.fh.upsert` namespace. Each upsert function runs structured data parsing, schema normalisation, and TP publishing.
 
-Live data publishing is driven by the timer interval and initialised automatically when the system starts. The interval can also be overridden at runtime using the `scripts/fh-timer.sh` script.
+Live data publishing is driven by the timer interval and initialized automatically when the system starts. The interval can also be overridden at runtime using the `scripts/fh-timer.sh` script.
 
 <details>
 <summary>Example .fh.upsert Function Format</summary>
@@ -318,7 +318,7 @@ Use `.restgw.query` within analytics handlers — it is aliased to `.kxgw.query`
 
 ### Usage
 
-Logging is enabled on all processes by loading `utils/logging.q` (via `utils/main.q`). This initialises the `kx.log` module and redirects output to a per-process log file.
+Logging is enabled on all processes by loading `utils/logging.q` (via `utils/main.q`). This initializes the `kx.log` module and redirects output to a per-process log file.
 
 Default usage documentation can be found at https://github.com/KxSystems/logging/blob/main/docs/reference.md
 
@@ -398,7 +398,7 @@ The script preserves `startup.log` regardless of age.
 
 ## Timers
 
-Additional logic allows multiple separately-defined functions to be called on a single timer (`.z.ts`) per process. Functions are added to the `.timer.funcs` dictionary, initialised by `utils/timer.q`.
+Additional logic allows multiple separately-defined functions to be called on a single timer (`.z.ts`) per process. Functions are added to the `.timer.funcs` dictionary, initialized by `utils/timer.q`.
 
 <details>
 <summary>Example Timer Function</summary>

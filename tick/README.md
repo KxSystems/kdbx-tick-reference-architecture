@@ -269,7 +269,7 @@ Use `.restgw.query` within analytics handlers — it is aliased to `.kxgw.query`
 
 ### Usage
 
-Logging is enabled on all processes by loading `utils/logging.q` (via `utils/main.q`). This initialises the `kx.log` module and redirects output to a per-process log file.
+Logging is enabled on all processes by loading `utils/logging.q` (via `utils/main.q`). This initializes the `kx.log` module and redirects output to a per-process log file.
 
 Default usage documentation can be found at https://github.com/KxSystems/logging/blob/main/docs/reference.md
 
@@ -331,7 +331,7 @@ Accepted values: `trace`, `debug`, `info`, `warn`, `error`, `fatal`. Anything el
 
 ## Timers
 
-Additional logic allows multiple separately-defined functions to be called on a single timer (`.z.ts`) per process. Functions are added to the `.timer.funcs` dictionary, initialised by `utils/timer.q`.
+Additional logic allows multiple separately-defined functions to be called on a single timer (`.z.ts`) per process. Functions are added to the `.timer.funcs` dictionary, initialized by `utils/timer.q`.
 
 <details>
 <summary>Example Timer Function</summary>

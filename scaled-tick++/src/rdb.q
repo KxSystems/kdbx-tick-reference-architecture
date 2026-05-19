@@ -17,7 +17,7 @@ if[not "w"=first string .z.o;system "sleep 1"];
 
 system"l scaled-tick++/utils/main.q";
 
-.log.info["Initialising RDB"];
+.log.info["Initializing RDB"];
 
 // @desc Writedown role flag — true when `-procName` is exactly "RDB" (the leader)
 // Followers (`RDB_CHAIN_*`) carry data but do not write down at EOD; the TP failover
@@ -145,4 +145,4 @@ if[not .rdb.connectTPWithRetry[10];
 // 60s housekeeping timer (reconnect, log rollover, etc.)
 system"t 60000";
 
-.log.info[("RDB successfully initialised on port [%s] HDB location [%s]";`long$first system"p";first system"pwd")];
+.log.info[("RDB successfully initialized on port [%s] HDB location [%s]";`long$first system"p";first system"pwd")];

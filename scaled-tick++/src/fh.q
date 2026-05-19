@@ -9,7 +9,7 @@
 
 system"l scaled-tick++/utils/main.q";
 
-.log.info["Initialising FH"];
+.log.info["Initializing FH"];
 
 // @desc Open a TP connection with exponential backoff + jitter, fatal-exiting after `maxRetries`
 // Handles TCP backlog exhaustion when multiple processes start simultaneously.
@@ -54,4 +54,4 @@ TP_H:.fh.connectTPWithRetry[10];
 system"t ",first CLI_ARGS[`fhTimer];
 .log.info[enlist["Timer interval set to every [%s] ms"],(CLI_ARGS[`fhTimer])];
 
-.log.info["Successfully initialised FH"];
+.log.info["Successfully initialized FH"];

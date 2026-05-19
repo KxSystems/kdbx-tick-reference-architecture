@@ -17,7 +17,7 @@
 
 system"l tick/utils/main.q";
 
-.log.info["Initialising tickerplant"];
+.log.info["Initializing tickerplant"];
 
 // Load every schema file under $SCHEMA_DIR so every table this TP publishes is defined locally.
 {[x]
@@ -90,4 +90,4 @@ if[not system"t";system"t 1000";
 
 // Boot the tickerplant: log-file prefix from $TPLOG_NAME, log directory from -tplogDir.
 .u.tick[getenv[`TPLOG_NAME]; first CLI_ARGS[`tplogDir]];
-.log.info[("Tickerplant successfully initialised. Logging to:\t %r"; .u.L)];
+.log.info[("Tickerplant successfully initialized. Logging to:\t %r"; .u.L)];

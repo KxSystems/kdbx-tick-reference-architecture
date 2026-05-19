@@ -3,10 +3,10 @@
 // Parse command line arguments
 CLI_ARGS:.Q.opt .z.x;
 
-// Initialise timer library
+// initialize timer library
 system"l scaled-tick++/utils/timer.q";
 
-// Initialise log library
+// initialize log library
 {[x]
     system"l scaled-tick++/utils/logging.q";
     .log.procStarted[x];

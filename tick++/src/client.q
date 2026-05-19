@@ -17,7 +17,7 @@
 
 system"l tick++/utils/main.q";
 
-.log.info["Initialising Q client"];
+.log.info["Initializing Q client"];
 
 // @desc IPC handle to the Feedhandler — null when FH is unreachable at startup
 FH_H:@[hopen; `$"::",first CLI_ARGS[`fhPort];  {.log.warn["Failed to connect to FH: ", x]; 0N}];
@@ -37,7 +37,7 @@ RDB_H:@[hopen; `$"::",first CLI_ARGS[`rdbPort]; {.log.warn["Failed to connect to
 // @desc IPC handle to the Historical Database — direct (non-gateway) HDB queries
 HDB_H:@[hopen; `$"::",first CLI_ARGS[`hdbPort]; {.log.warn["Failed to connect to HDB: ",x]; 0N}];
 
-.log.info["Successfully initialised Q client"];
+.log.info["Successfully initialized Q client"];
 .log.info[("  FH_H:  %s"; $[null FH_H;  "NOT CONNECTED"; string FH_H])];
 .log.info[("  GW_H:  %s"; $[null GW_H;  "NOT CONNECTED"; string GW_H])];
 .log.info[("  TP_H:  %s"; $[null TP_H;  "NOT CONNECTED"; string TP_H])];

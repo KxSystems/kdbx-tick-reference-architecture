@@ -24,7 +24,7 @@ if[not "w"=first string .z.o;system "sleep 1"];
 
 system"l tick++/utils/main.q";
 
-.log.info["Initialising RDB (writedown role)"];
+.log.info["Initializing RDB (writedown role)"];
 
 // @desc Standard kdb-tick subscriber upd hook — append rows into the matching root table
 // Emits a `[FLOW RDB] upd received` debug line per call so the publish path is traceable.
@@ -205,5 +205,5 @@ if[not .rdb.connectTPWithRetry[10];
 // Drive both reconnect-check and intraday flush off the same timer (flushIntv minutes).
 system"t ",string `long$.rdb.flushIntv * 60000;
 
-.log.info[("RDB (writedown) initialised on port [%s] | flush every [%d] min | HDB=[%s] | staging=[%s]";
+.log.info[("RDB (writedown) initialized on port [%s] | flush every [%d] min | HDB=[%s] | staging=[%s]";
     `long$first system"p"; .rdb.flushIntv; first CLI_ARGS[`hdbDir]; string .rdb.tmp)];

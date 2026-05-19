@@ -17,7 +17,7 @@
 
 system"l tick/utils/main.q";
 
-.log.info["Initialising RTE"];
+.log.info["Initializing RTE"];
 
 // @desc Tickerplant handle — null until `.rte.connectTP[]` succeeds; cleared by `.z.pc` on disconnect
 TP_H:0N;
@@ -189,4 +189,4 @@ upd:{[t;x]
 // 60s housekeeping timer (reconnect, log rollover, etc.)
 system"t 60000";
 
-.log.info[("RTE successfully initialised on port [%s]"; `long$first system"p")];
+.log.info[("RTE successfully initialized on port [%s]"; `long$first system"p")];
