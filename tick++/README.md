@@ -30,7 +30,7 @@ Each `FLUSH_INTV_MIN` minutes the main RDB writes rows older than `now - FLUSH_I
 
 ### Architecture Diagram
 
-![kdb-x arch](../arch/kdb-x-architecture.png)
+![tick++ architecture](../arch/tick++.drawio.png)
 
 ## Trade-offs vs Base Tick
 

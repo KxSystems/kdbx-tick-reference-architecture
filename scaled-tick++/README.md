@@ -17,7 +17,7 @@ In the documentation below it explains where to take schemas, sample data, and a
 
 ### Architecture Diagram
 
-![kdb-x arch](../arch/kdb-x-architecture.png)
+![scaled-tick++ architecture](../arch/scaled-tick++.drawio.png)
 
 ## Usage
 

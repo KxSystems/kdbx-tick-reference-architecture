@@ -15,7 +15,7 @@ The architecture contained within this repository consists of the following q pr
 
 ### Architecture Diagram
 
-![kdb-x arch](../arch/kdb-x-architecture.png)
+![tick architecture](../arch/tick.drawio.png)
 
 ## Usage
 
