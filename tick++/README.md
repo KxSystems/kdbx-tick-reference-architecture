@@ -66,7 +66,7 @@ Tick++ trades operational simplicity for query/ingest isolation and intraday dur
   - IDB is down when the main RDB signals a reload → the IDB just keeps the stale view; the next signal (or restart) corrects it. The signal is fire-and-forget by design.
   - CHAINED_RDB falls behind the main RDB → queries return slightly stale data. The two are independent TP subscribers, so they can desync briefly under load; both will catch up.
 - **Three-tier query model.** Callers need to understand the cutover between `rdb` (most recent), `idb` (today's older), and `hdb` (post-EOD). Base tick's two-tier `rdb`/`hdb` split is mentally simpler. The `all` target fans across all three tiers when callers don't want to pick — but "all of today's data" is now `rdb` + `idb` rather than just `rdb`.
-- **Schema must be loaded in one more place.** Base tick loads schemas in the TP and RDB. Tick++ adds IDB to that list (so it has table shapes + `g#sym` before the first reload).
+- **Schema must be loaded in one more place.** Base tick loads schemas in the TP and RDB. Tick++ and scaled-tick++ adds an IDB to that list (so it has table shapes + `g#sym` before the first reload).
 - **More configuration to keep in sync across scripts.** `IDB_DIR`, `IDB_PORT`, `CHAINED_RDB_PORT`, `FLUSH_INTV_MIN` must match across `startup.sh` and `restart.sh`.
 
 ### When to pick which
@@ -221,7 +221,7 @@ To identify running processes:
 $ pgrep -af -- -procName
 ```
 
-The gateway connects to the RDB and HDB on startup. If a process is restarted while the gateway is running, the gateway will reconnect automatically on its next timer tick (every 60 seconds).
+The gateway connects to the RDB, IDB, and HDB on startup. If a process is restarted while the gateway is running, the gateway will reconnect automatically on its next timer tick (every 60 seconds).
 
 ### Querying
 

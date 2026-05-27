@@ -1,4 +1,4 @@
-export ROOT_DIR=$HOME/delivery/kdbx-tick-reference-architecture
+export ROOT_DIR=$HOME/kdbx-tick-reference-architecture
 export SCHEMA_DIR=$ROOT_DIR/samples/schemas
 export SAMPLE_DATA=$ROOT_DIR/samples/data
 export TPLOG_DIR=$ROOT_DIR/app/tplogs
