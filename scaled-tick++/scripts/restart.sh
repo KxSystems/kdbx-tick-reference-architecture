@@ -166,7 +166,7 @@ case "$proc_name" in
   REST_GW_[0-9]*)
     idx=${proc_name#REST_GW_}
     kill_proc "$proc_name"
-    q scaled-tick++/src/rest-gw.q -p rp,$REST_PORT -s $s_flag \
+    q scaled-tick++/src/restgw.q -p rp,$REST_PORT -s $s_flag \
       -gwPort $GW_PORT \
       -analyticsDir $ANALYTIC_DIR \
       -procName REST_GW_$idx < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &

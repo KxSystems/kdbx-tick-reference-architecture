@@ -167,7 +167,7 @@ echo -e "  Started GW\t\t[$GW_PORT]"
 # kernel load-balances incoming HTTP connections across them. On macOS BSD,
 # SO_REUSEPORT semantics differ — running >1 REST_GW is mostly demonstrative.
 for ((i=0; i<REST_GW_COUNT; i++)); do
-  q scaled-tick++/src/rest-gw.q \
+  q scaled-tick++/src/restgw.q \
     -p rp,$REST_PORT -s $s_flag \
     -gwPort $GW_PORT \
     -analyticsDir $ANALYTIC_DIR \

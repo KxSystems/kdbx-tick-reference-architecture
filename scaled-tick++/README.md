@@ -35,31 +35,7 @@ Because the leader sheds flushed rows it would return inconsistent `rdb` results
 
 ### Deferred-Sync Gateway
 
-The gateway is the canonical kdb+ "deferred-sync" pattern. A client sends a normal *synchronous* request (`gwh (`.kxgw.query; `rdb; "...")`); the GW immediately defers the response, async-dispatches to a chosen DB, and resumes the client when the DB calls back:
-
-```
-client      GW                                          RDB_CHAIN_i
-  ──sync──► .z.pg → .kxgw.query
-              reqID = first -1?0Ng
-              REQUESTS upsert (reqID; .z.w; .z.P; target)
-              h = .kxgw.getRDB[]      // cached leader flag, no IPC poll
-              (neg h)(`.gw.evalAndRespond; reqID; `rdb; query)   async ►
-              -30!(::)                                              evals query
-              (GW free to dispatch other reqs)                    ◄ async (`.kxgw.callback; reqID; `rdb; result)
-              .z.ps → .kxgw.callback → -30!(.z.w; 0b; result) ►
-  ◄ unblocks with result
-```
-
-The contract:
-
-- **Sync API preserved.** Clients see the request and response exactly as before — no callback registration on the client side, no API break. `api-test.q` and `client.q` continue to use the existing `gwh (`.kxgw.query; ...)` form.
-- **Replicas actually run in parallel.** While query A is in flight against `RDB_CHAIN_0`, the GW can already have dispatched query B to `RDB_CHAIN_1`, query C to the IDB, and so on. There is no per-GW serialization point.
-- **`all` is a real fan-out.** For `target=`all` the GW fires three async dispatches (rdb / idb / hdb) and accumulates the per-tier results in `PENDING_ALL[reqID]`. When all three have arrived it emits `` `rdb`idb`hdb!(rr;ir;hr) `` to the client. Pass a single query (applied to all three) or a 3-element list `(rdbQuery; idbQuery; hdbQuery)` for per-tier customization.
-- **Leader detection is timer-cached.** `.kxgw.refreshLeaders` is on a 2 s timer + on every `.z.pc` for an RDB handle. The previous per-query MAIN_FLAG poll would re-block the GW the moment it dispatched, so polling has been deliberately moved off the hot path. The failover-detection window is bounded at 2 s.
-- **Timeouts are tagged.** `REQ_TIMEOUT` (default `0D00:01:00`, configurable via `-reqTimeout` / `.env`) bounds how long a request can sit in `REQUESTS`. On expiry the GW sends `-30!(clientH; 1b; "TIMEOUT: Request timed out")` — the client's sync send raises a signal, which q-IPC clients catch via `@[gwh; ...; errFn]` and REST_GW catches and tags as `UNAVAIL`/`TIMEOUT`/`QUERY` for an HTTP 500 response.
-- **Disconnects clean themselves up.** When a client (q-IPC or REST_GW) drops, the GW's `.z.pc` removes any in-flight `REQUESTS` rows belonging to that handle. When a DB drops, the alive flag is cleared and leaders are re-polled; in-flight rows targeting that DB are reaped by the next timeout sweep.
-
-REST endpoints get the same concurrency benefit indirectly: each REST_GW is itself a sync IPC client of the GW, so its HTTP handler blocks on a single sync call (no busy-wait) and unblocks when the GW resumes. A single REST_GW still serialises *its own* HTTP queue, so to scale HTTP concurrency raise `REST_GW_COUNT` — N front-ends sharing `REST_PORT` via SO_REUSEPORT.
+The gateway uses a canonical kdb+ "deferred-sync" pattern. A client sends a normal *synchronous* request (``gwh (`.kxgw.query; `rdb; "...")``); the GW immediately defers the response, async-dispatches to a chosen DB, and resumes the client when the DB calls back.
 
 ### Architecture Diagram
 
@@ -546,7 +522,7 @@ scaled-tick++/
 │   ├── hdb.q
 │   ├── idb.q
 │   ├── rdb.q
-│   ├── rest-gw.q
+│   ├── restgw.q
 │   ├── rte.q
 │   ├── tick.q
 │   └── u.q

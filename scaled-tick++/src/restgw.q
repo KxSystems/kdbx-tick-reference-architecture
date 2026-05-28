@@ -1,4 +1,4 @@
-// scaled-tick++/src/rest-gw.q - REST Gateway
+// scaled-tick++/src/restgw.q - REST Gateway
 //
 // Thin HTTP --> q-IPC adapter. N instances share the same HTTP port via Linux SO_REUSEPORT
 // socket sharding. The kernel distributes incoming connections across processes
@@ -10,7 +10,7 @@
 // All queuing, backpressure, timeout, and failover semantics are inherited from
 // the GW's deferred-sync path — REST_GW carries no policy of its own
 //
-// q scaled-tick++/src/rest-gw.q -p rp,$REST_PORT -gwPort $GW_PORT \
+// q scaled-tick++/src/restgw.q -p rp,$REST_PORT -gwPort $GW_PORT \
 //                          -analyticsDir $ANALYTIC_DIR -procName REST_GW_<N>
 
 system"l scaled-tick++/utils/main.q";
