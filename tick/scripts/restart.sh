@@ -59,11 +59,20 @@ done
 
 kill_proc() {
   local pattern=$1
-  local pids
-  pids=$(pgrep -af "q.*-procName ${pattern}\b" | awk '{print $1}')
+  local pids=""
+  # `pgrep -f` is portable (BSD + GNU); -af is not — on macOS BSD `-a` means
+  # "include ancestors" and the output is just PIDs, so the awk that followed
+  # was a no-op. We then resolve each PID's args via `ps` and require an exact
+  # -procName match (followed by space or end of line) so e.g. "RDB" does not
+  # also match "RDB_CHAIN_0".
+  for pid in $(pgrep -f "q.*-procName $pattern"); do
+    local cmd
+    cmd=$(ps -p "$pid" -o args= 2>/dev/null)
+    echo "$cmd" | grep -qE -- "-procName $pattern( |\$)" && pids="$pids $pid"
+  done
   if [ -n "$pids" ]; then
-    echo "  Killing $pattern: $pids"
-    echo "$pids" | xargs kill -9 2>/dev/null
+    echo "  Killing $pattern:$pids"
+    kill -9 $pids 2>/dev/null
     sleep 0.3
   else
     echo "  No running process found for $pattern"

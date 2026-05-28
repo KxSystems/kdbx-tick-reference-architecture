@@ -1,12 +1,19 @@
-// scaled-tick++/src/gw.q - Gateway Process (q-IPC + REST, chained-RDB-aware)
+// scaled-tick++/src/gw.q - Gateway Process (q-IPC + REST, chained-RDB + IDB aware)
 //
 // q scaled-tick++/src/gw.q -p $GW_PORT -rdbPort $RDB_PORT [-crdbPort $RDB_CHAIN_PORTS] \
-//                    -hdbPort $HDB_PORTS -analyticsDir $ANALYTIC_DIR -procName GW
+//                    -idbPort $IDB_PORT -hdbPort $HDB_PORTS -analyticsDir $ANALYTIC_DIR -procName GW
 //
-// Routes queries from q-IPC and REST clients across one leader RDB plus N RDB_CHAIN
-// followers, and one or more HDB instances. Analytics files under `-analyticsDir` define
-// REST endpoints whose handlers call `.restgw.query` (aliased to `.kxgw.query`) to issue
-// queries through the gateway. Per-target load-balancing picks a random alive handle.
+// Routes queries from q-IPC and REST clients across four tiers:
+//   • `rdb`  — chained RDB followers (full in-memory data). The writedown leader is excluded
+//              from this pool: it sheds flushed rows, so only followers serve consistent data.
+//   • `idb`  — the single intraday DB (today's flushed int-partitions, in memory from disk)
+//   • `hdb`  — historical DB(s) (post-EOD on-disk partitions)
+//   • `all`  — rdb + idb + hdb (fan-out across all three tiers)
+//
+// The leader is identified by polling each RDB's `MAIN_FLAG` at query time, so failover
+// (a follower promoted to leader) is reflected without restarting the gateway. Per-target
+// load-balancing picks a random alive handle. Analytics files under `-analyticsDir` define
+// REST endpoints whose handlers call `.restgw.query` (aliased to `.kxgw.query`).
 
 system"l scaled-tick++/utils/main.q";
 
@@ -15,11 +22,13 @@ system"l scaled-tick++/utils/main.q";
 // @desc Combined RDB port list — leader RDB + every chained `-crdbPort` value
 RDB_PORTS:CLI_ARGS[`rdbPort],$[()~CLI_ARGS[`crdbPort]; (); CLI_ARGS[`crdbPort]];
 
-.log.info[enlist["Connecting to DB processes [RDB port(s): %s] [HDB port(s): %s]"],
-    (RDB_PORTS; CLI_ARGS[`hdbPort])];
+.log.info[enlist["Connecting to DB processes [RDB port(s): %s] [IDB port: %s] [HDB port(s): %s]"],
+    (RDB_PORTS; CLI_ARGS[`idbPort]; CLI_ARGS[`hdbPort])];
 
-// @desc DB connection registry — one row per `(handle; proc; alive)` triple
-CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
+// @desc DB connection registry — one row per `(handle; proc; alive; leader)` tuple
+// `leader` only applies to RDB rows; it is refreshed from each RDB's `MAIN_FLAG` so the
+// writedown leader can be excluded from the rdb query pool. IDB / HDB rows keep `leader=0b`.
+CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$();leader:`boolean$());
 
 // @desc Attempt to connect to each port in `ports`, registering successes in CONNECTIONS
 // Failures log a warning and are skipped; nothing is fatal so the GW can start ahead of DB processes.
@@ -33,11 +42,12 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
             .log.warn[("Cannot connect to ",label,(string i)," on port ",port," - will retry on timer")];
             :()
         ];
-        `CONNECTIONS upsert (h; `$label,string i; 1b);
+        `CONNECTIONS upsert (h; `$label,string i; 1b; 0b);
      }[label] ./: flip (1+til count ports; ports);
     };
 
 .kxgw.tryConnect["RDB_"; RDB_PORTS];
+.kxgw.tryConnect["IDB_"; CLI_ARGS[`idbPort]];
 .kxgw.tryConnect["HDB_"; CLI_ARGS[`hdbPort]];
 
 // @desc Mark the closed handle as not alive in CONNECTIONS
@@ -48,10 +58,27 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
     CONNECTIONS[x;`alive]:0b;
     };
 
-// @desc Return a random handle of an alive RDB (or RDB_CHAIN) connection, or 0N if none alive
+// @desc Refresh the `leader` flag for every alive RDB by polling its `MAIN_FLAG`
+// The writedown leader sheds flushed rows, so it must be excluded from the rdb pool. Polling
+// at query time keeps the pool correct across failover with no push needed from the TP.
+.kxgw.refreshLeaders:{[]
+    {[h] CONNECTIONS[h;`leader]:@[h;"MAIN_FLAG";{[e]0b}]} each
+        exec handle from CONNECTIONS where alive, proc like "RDB_*";
+    };
+
+// @desc Return a random handle of an alive *follower* RDB, or 0N if none alive
+// Refreshes leadership first, then excludes the current writedown leader.
 //
-// @return        {int}       Live RDB handle, or null
-.kxgw.getRDB:{first exec 1?handle from CONNECTIONS where alive, proc like "RDB_*"};
+// @return        {int}       Live follower-RDB handle, or null
+.kxgw.getRDB:{[]
+    .kxgw.refreshLeaders[];
+    first exec 1?handle from CONNECTIONS where alive, not leader, proc like "RDB_*"
+    };
+
+// @desc Return a random handle of an alive IDB connection, or 0N if none alive
+//
+// @return        {int}       Live IDB handle, or null
+.kxgw.getIDB:{first exec 1?handle from CONNECTIONS where alive, proc like "IDB_*"};
 
 // @desc Return a random handle of an alive HDB (or HDB_EXTRA) connection, or 0N if none alive
 //
@@ -60,11 +87,11 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
 
 // @desc Query dispatch entry point — routes opaque `query` to the chosen target(s)
 // `target` selects which database is queried; `query` may be a string, parse-tree, or
-// (for `both`) a 2-element list of (rdbQuery; hdbQuery). All errors are caught and
-// returned as ``error`msg!(...; ...)`` dictionaries rather than thrown.
+// (for `all`) a 3-element list of (rdbQuery; idbQuery; hdbQuery). All errors are caught
+// and returned as ``error`msg!(...; ...)`` dictionaries rather than thrown.
 //
-// @param target  {symbol}    `` `rdb`` | `` `hdb`` | `` `both``
-// @param query   {*}         String / parse-tree / 2-list (`both` only)
+// @param target  {symbol}    `` `rdb`` | `` `idb`` | `` `hdb`` | `` `all`` (rdb + idb + hdb)
+// @param query   {*}         String / parse-tree / 3-list (`all` only)
 //
 // @return        {*}         Query result, or `` `error`msg!`` dictionary on failure
 .kxgw.query:{[target;query]
@@ -73,20 +100,28 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
          if[null h; :`error`msg!("No available RDB";"")];
          @[h; query; {`error`msg!("RDB query failed";x)}]
         ];
+      target=`idb;
+        [h:.kxgw.getIDB[];
+         if[null h; :`error`msg!("No available IDB";"")];
+         @[h; query; {`error`msg!("IDB query failed";x)}]
+        ];
       target=`hdb;
         [h:.kxgw.getHDB[];
          if[null h; :`error`msg!("No available HDB";"")];
          @[h; query; {`error`msg!("HDB query failed";x)}]
         ];
-      target=`both;
-        [rh:.kxgw.getRDB[]; hh:.kxgw.getHDB[];
+      target=`all;
+        [rh:.kxgw.getRDB[]; ih:.kxgw.getIDB[]; hh:.kxgw.getHDB[];
          if[null rh; :`error`msg!("No available RDB";"")];
+         if[null ih; :`error`msg!("No available IDB";"")];
          if[null hh; :`error`msg!("No available HDB";"")];
-         rq:$[0h=type query; first query; query];
-         hq:$[0h=type query; last  query; query];
+         rq:$[0h=type query; query 0; query];
+         iq:$[0h=type query; query 1; query];
+         hq:$[0h=type query; query 2; query];
          rr:@[rh; rq; {`error`msg!("RDB query failed";x)}];
+         ir:@[ih; iq; {`error`msg!("IDB query failed";x)}];
          hr:@[hh; hq; {`error`msg!("HDB query failed";x)}];
-         `rdb`hdb!(rr;hr)
+         `rdb`idb`hdb!(rr;ir;hr)
         ];
       [`error`msg!("Unknown target: ",string[target];"")]
     ]

@@ -1,23 +1,28 @@
 #!/bin/bash
 
-# Start all processes for the Tick Reference Architecture.
+# Start all processes for the Scaled Tick++ Reference Architecture.
 # Run from the project root directory.
 #
 # Usage: ./scaled-tick++/scripts/startup.sh [-e envFile] [-s secondaries] [-m chainedRdbs]
 #   -e  Path to .env file (default: .env)
 #   -s  Secondary threads per process (default: 0)
-#   -m  Number of chained RDB replicas for failover (default: 0)
+#   -m  Number of chained RDB replicas for failover (default: 1, minimum: 1)
 #       Each replica is paired with a dedicated HDB instance.
+#
+# The leader RDB is dedicated to intraday writedown (it flushes int-partitions to the IDB
+# and merges them into the HDB at EOD) and does NOT serve rdb-tier queries, so at least one
+# chained replica (-m >= 1) is required to serve them. Use -m >= 2 for query continuity
+# through a leader failure (one replica is promoted to writedown, others keep serving).
 
 e_flag=".env"
 s_flag=0
-m_flag=0
+m_flag=1
 
 print_usage() {
   printf "Usage: ./scaled-tick++/scripts/startup.sh [-e envFile] [-s secondaries] [-m chainedRdbs]\n"
   printf "  -e  Path to .env file (default: .env)\n"
   printf "  -s  Secondary threads per process (default: 0)\n"
-  printf "  -m  Number of chained RDB replicas for failover (default: 0)\n"
+  printf "  -m  Number of chained RDB replicas for failover (default: 1, minimum: 1)\n"
 }
 
 while getopts 'e:s:m:' flag; do
@@ -29,11 +34,21 @@ while getopts 'e:s:m:' flag; do
   esac
 done
 
+if [ "$m_flag" -lt 1 ]; then
+  echo "scaled-tick++ requires at least one chained RDB replica (-m >= 1):"
+  echo "  the leader RDB is dedicated to writedown and does not serve rdb-tier queries,"
+  echo "  so at least one follower is needed to serve them."
+  exit 1
+fi
+
 if [ ! -f "$e_flag" ]; then
   echo "Env file not found: $e_flag"
   exit 1
 fi
 source "$e_flag"
+
+# IDB staging dir must exist before the leader's first flush.
+mkdir -p "$IDB_DIR"
 
 # Port allocation for chained RDB/HDB pairs.
 # Paired scheme: PARALLEL_PORT_RANGE_START + 2*i (RDB_CHAIN_i), +2*i+1 (HDB_EXTRA_i)
@@ -46,12 +61,13 @@ done
 
 ALL_HDB_PORTS=($HDB_PORT ${HDB_EXTRA_PORTS[*]})
 
-echo -e "Starting Tick Reference Architecture..."
+echo -e "Starting Scaled Tick++ Reference Architecture..."
 echo -e "  .env:             [$e_flag]"
 echo -e "  Secondaries:      [$s_flag]"
 echo -e "  Chained RDBs:     [$m_flag]"
-[ $m_flag -gt 0 ] && echo -e "  RDB chain ports:  [${RDB_CHAIN_PORTS[*]}]"
-[ $m_flag -gt 0 ] && echo -e "  HDB extra ports:  [${HDB_EXTRA_PORTS[*]}]"
+echo -e "  Flush interval:   [${FLUSH_INTV_MIN} min]"
+echo -e "  RDB chain ports:  [${RDB_CHAIN_PORTS[*]}]"
+echo -e "  HDB extra ports:  [${HDB_EXTRA_PORTS[*]}]"
 echo ""
 
 # ── Tickerplant ──────────────────────────────────────────────────────────
@@ -62,21 +78,34 @@ q scaled-tick++/src/tick.q \
   < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started TP\t\t[$TICK_PORT]"
 
-# ── RDB (realtime leader) ────────────────────────────────────────────────
+# ── IDB (single intraday DB) ──────────────────────────────────────────────
+# Start before the RDBs so the leader's first flush signal lands on a live IDB.
+q scaled-tick++/src/idb.q \
+  -p $IDB_PORT -s $s_flag \
+  -hdbDir $HDB_DIR -idbDir $IDB_DIR \
+  -procName IDB \
+  < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+echo -e "  Started IDB\t\t[$IDB_PORT]"
+
+# ── RDB (writedown leader) ────────────────────────────────────────────────
 q scaled-tick++/src/rdb.q \
   -p $RDB_PORT -s $s_flag \
-  -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
+  -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -idbDir $IDB_DIR \
   -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
+  -idbPort $IDB_PORT -flushIntvMin $FLUSH_INTV_MIN \
   -procName RDB \
   < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started RDB\t\t[$RDB_PORT]"
 
-# ── Chained RDB replicas (failover followers) ────────────────────────────
+# ── Chained RDB replicas (query servers + failover followers) ─────────────
+# Configured for writedown too: any follower may be promoted to leader, at which point
+# its MAIN_FLAG-gated flush begins. Until then it serves rdb-tier queries via the gateway.
 for ((i=0; i<m_flag; i++)); do
   q scaled-tick++/src/rdb.q \
     -p ${RDB_CHAIN_PORTS[$i]} -s $s_flag \
-    -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
+    -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -idbDir $IDB_DIR \
     -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
+    -idbPort $IDB_PORT -flushIntvMin $FLUSH_INTV_MIN \
     -procName RDB_CHAIN_$i \
     < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
   echo -e "  Started RDB_CHAIN_$i\t[${RDB_CHAIN_PORTS[$i]}]"
@@ -123,6 +152,7 @@ q scaled-tick++/src/gw.q \
   -p $GW_PORT -s $s_flag \
   -rdbPort $RDB_PORT \
   -crdbPort ${RDB_CHAIN_PORTS[*]} \
+  -idbPort $IDB_PORT \
   -hdbPort ${ALL_HDB_PORTS[*]} \
   -analyticsDir $ANALYTIC_DIR \
   -procName GW \

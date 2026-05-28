@@ -6,8 +6,12 @@
 //   Phase 4  — RTE enrichment (weatherHeatIndex — not in api-test.q)
 //   Phase 5  — EOD trigger + HDB verification
 //   Phase 6  — REST endpoint tests post-EOD (delegates to rest-test.q)
-//   Phase 7  — RDB leader failover to RDB_CHAIN_0
+//   Phase 7  — RDB leader failover (writedown role moves; queries continue via a surviving replica)
 //   Phase 8  — restart.sh GW (kills GW, expects restart)
+//
+// Start the stack with -m >= 2 before running this: Phase 7 kills the leader, which promotes
+// a follower into the writedown role (and out of the query pool), so a second follower must
+// remain to demonstrate query continuity.
 //
 // Usage (from project root):
 //   source .env && q scaled-tick++/tests/e2e-test.q -gwPort $GW_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
@@ -38,7 +42,23 @@ FH_PORT: "I"$first CLI_ARGS[`fhPort];
 
 // Find pid of a q process by exact procName (no partial matches like RDB_CHAIN).
 .t.findPid:{[name]
-    first system "pgrep -af 'q.*-procName ",name,"(\\s|$)' | awk '{print $1}'"
+    // `pgrep -f` is portable (BSD + GNU); `pgrep -af` is not — on macOS BSD
+    // `-a` means "include ancestors", not "show command line", so the awk pipe
+    // was a no-op and the `(\s|$)` regex anchor wasn't supported either. The
+    // `| cat` suffix swallows pgrep / ps non-zero exits (no match, or pid
+    // raced and disappeared) which q's `system` would otherwise raise as `'os`
+    // — we deliberately avoid `|| true` here because it breaks q's stdout
+    // capture on some builds. We match loosely first, then filter via
+    // `ps -p <pid> -o args=` for an exact -procName match so e.g. "RDB" does
+    // not also match "RDB_CHAIN_0".
+    pids:system "pgrep -f 'q.*-procName ",name,"' | cat";
+    if[not count pids;:""];
+    pats:("*-procName ",name;"*-procName ",name," *");
+    m:{[pats;pid]
+        out:system "ps -p ",pid," -o args= | cat";
+        $[count out; any (first out) like/:pats; 0b]
+      }[pats] each pids;
+    $[count r:pids where m; first r; ""]
  };
 
 // Safe pid cast — returns 0Ni on empty string or cast failure.
@@ -71,7 +91,7 @@ rdbCounts:gwh(`.kxgw.query; `rdb; "tables[]!count each value each tables[]");
 
 // ── Phase 3: q-IPC query tests ────────────────────────────────────────────
 // Delegates to api-test.q which covers: string queries, parse-tree queries,
-// sym filters, HDB (empty-safe), both target, and error handling.
+// sym filters, IDB + HDB (empty-safe), all target, and error handling.
 .t.section "Phase 3: q-IPC query tests (api-test.q)";
 
 apiCmd:"q scaled-tick++/tests/api-test.q -gwPort ",string[GW_PORT]," -procName api-test";
@@ -86,8 +106,8 @@ heatRdb:gwh(`.kxgw.query; `rdb; "select from weatherHeatIndex");
 .t.check["weatherHeatIndex on RDB returns table"; {98h=type x};  heatRdb];
 .t.check["weatherHeatIndex on RDB has rows";      {0<count x};   heatRdb];
 
-heatBoth:gwh(`.kxgw.query; `both; "select from weatherHeatIndex");
-.t.check["weatherHeatIndex via both returns dict"; {(99h=type x) and `rdb`hdb~key x}; heatBoth];
+heatAll:gwh(`.kxgw.query; `all; "select from weatherHeatIndex");
+.t.check["weatherHeatIndex via all returns dict"; {(99h=type x) and `rdb`idb`hdb~key x}; heatAll];
 
 // ── Phase 5: EOD trigger + HDB verify ────────────────────────────────────
 .t.section "Phase 5: EOD trigger + HDB verification";
@@ -102,9 +122,9 @@ hdbCounts:gwh(`.kxgw.query; `hdb; "tables[]!count each value each tables[]");
 .t.check["HDB energy has rows after EOD";  {0<x`energy};  hdbCounts];
 .t.check["HDB weather has rows after EOD"; {0<x`weather}; hdbCounts];
 
-both5:gwh(`.kxgw.query; `both; "select from energy");
-.t.check["both post-EOD returns dict";       {(99h=type x) and `rdb`hdb~key x}; both5];
-.t.check["both post-EOD: HDB side has rows"; {0<count x`hdb};                   both5];
+all5:gwh(`.kxgw.query; `all; "select from energy");
+.t.check["all post-EOD returns dict";        {(99h=type x) and `rdb`idb`hdb~key x}; all5];
+.t.check["all post-EOD: HDB side has rows";  {0<count x`hdb};                       all5];
 
 // ── Phase 6: REST endpoint tests (post-EOD) ───────────────────────────────
 // rest-test.q checks HTTP status AND response body shape. Running post-EOD
@@ -117,7 +137,11 @@ restCmd:"q scaled-tick++/tests/rest-test.q -gwPort ",string[GW_PORT]," 2>&1";
 .t.check["rest-test.q passed"; {x}; .t.runScript[restCmd]];
 
 // ── Phase 7: RDB leader failover ──────────────────────────────────────────
-.t.section "Phase 7: RDB leader failover";
+// The leader is the writedown process and is excluded from the rdb query pool. Killing it
+// makes the TP promote a follower into the writedown role (that follower then leaves the
+// pool too), so query continuity requires a *surviving* follower — start with -m >= 2.
+// The gateway re-derives the leader from MAIN_FLAG on its next query, so no GW restart.
+.t.section "Phase 7: RDB leader failover (queries continue via surviving replica)";
 
 rdbPid:.t.findPid["RDB"];
 rdbPidI:.t.toPid[rdbPid];
@@ -126,9 +150,9 @@ rdbPidI:.t.toPid[rdbPid];
 if[not null rdbPidI;
     .log.info["Killing RDB leader (pid ",rdbPid,")..."];
     system "kill -9 ",rdbPid;
-    system "sleep 1";
+    system "sleep 2";
     failRes:gwh(`.kxgw.query; `rdb; "select from energy");
-    .t.check["GW routes to RDB_CHAIN_0 after leader failure (no error)";
+    .t.check["rdb queries continue via a surviving follower after leader failure";
         {98h=type x};
         failRes];
  ];
@@ -145,7 +169,7 @@ if[not null gwPidI;
     .log.info["Killing GW (pid ",gwPid,")..."];
     system "kill -9 ",gwPid;
     system "sleep 0.5";
-    system "./scaled-tick++/scripts/restart.sh GW -e .env -m 1";
+    system "./scaled-tick++/scripts/restart.sh GW -e .env -m 2";
     system "sleep 3";
     newGwh:@[hopen; `$"::",string GW_PORT; {0Ni}];
     .t.check["restart.sh restarted GW"; {not null x}; newGwh];

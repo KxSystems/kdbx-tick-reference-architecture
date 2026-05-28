@@ -5,12 +5,17 @@
 #
 # Usage: ./scaled-tick++/scripts/restart.sh <procName> [-e envFile] [-s secondaries] [-m chainedRdbs]
 #
-# procName: TP | RDB | RDB_CHAIN_<N> | HDB | HDB_EXTRA_<N> | FH | RTE | GW
+# procName: TP | RDB | RDB_CHAIN_<N> | IDB | HDB | HDB_EXTRA_<N> | FH | RTE | GW
 #
 # Examples:
 #   ./scaled-tick++/scripts/restart.sh GW
 #   ./scaled-tick++/scripts/restart.sh RTE
 #   ./scaled-tick++/scripts/restart.sh RDB_CHAIN_0 -m 2
+#   ./scaled-tick++/scripts/restart.sh IDB
+#
+# NOTE: do not restart a failed leader as "RDB" — if a follower was already promoted you
+# would end up with two writedown leaders flushing into the same staging dir. Start a new
+# "RDB_CHAIN_<N>" instead to restore the replica count.
 
 proc_name=$1
 shift
@@ -50,11 +55,20 @@ ALL_HDB_PORTS=($HDB_PORT ${HDB_EXTRA_PORTS[*]})
 
 kill_proc() {
   local pattern=$1
-  local pids
-  pids=$(pgrep -af "q.*-procName ${pattern}\b" | awk '{print $1}')
+  local pids=""
+  # `pgrep -f` is portable (BSD + GNU); -af is not — on macOS BSD `-a` means
+  # "include ancestors" and the output is just PIDs, so the awk that followed
+  # was a no-op. We then resolve each PID's args via `ps` and require an exact
+  # -procName match (followed by space or end of line) so e.g. "RDB" does not
+  # also match "RDB_CHAIN_0".
+  for pid in $(pgrep -f "q.*-procName $pattern"); do
+    local cmd
+    cmd=$(ps -p "$pid" -o args= 2>/dev/null)
+    echo "$cmd" | grep -qE -- "-procName $pattern( |\$)" && pids="$pids $pid"
+  done
   if [ -n "$pids" ]; then
-    echo "  Killing $pattern: $pids"
-    echo "$pids" | xargs kill -9 2>/dev/null
+    echo "  Killing $pattern:$pids"
+    kill -9 $pids 2>/dev/null
     sleep 0.3
   else
     echo "  No running process found for $pattern"
@@ -75,8 +89,9 @@ case "$proc_name" in
   RDB)
     kill_proc "RDB"
     q scaled-tick++/src/rdb.q -p $RDB_PORT -s $s_flag \
-      -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
+      -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -idbDir $IDB_DIR \
       -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
+      -idbPort $IDB_PORT -flushIntvMin $FLUSH_INTV_MIN \
       -procName RDB < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
     echo "  Started RDB [$RDB_PORT]"
     ;;
@@ -85,10 +100,19 @@ case "$proc_name" in
     idx=${proc_name#RDB_CHAIN_}
     kill_proc "$proc_name"
     q scaled-tick++/src/rdb.q -p ${RDB_CHAIN_PORTS[$idx]} -s $s_flag \
-      -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
+      -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -idbDir $IDB_DIR \
       -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
+      -idbPort $IDB_PORT -flushIntvMin $FLUSH_INTV_MIN \
       -procName RDB_CHAIN_$idx < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
     echo "  Started RDB_CHAIN_$idx [${RDB_CHAIN_PORTS[$idx]}]"
+    ;;
+
+  IDB)
+    kill_proc "IDB"
+    q scaled-tick++/src/idb.q -p $IDB_PORT -s $s_flag \
+      -hdbDir $HDB_DIR -idbDir $IDB_DIR \
+      -procName IDB < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+    echo "  Started IDB [$IDB_PORT]"
     ;;
 
   HDB)
@@ -131,6 +155,7 @@ case "$proc_name" in
     q scaled-tick++/src/gw.q -p $GW_PORT -s $s_flag \
       -rdbPort $RDB_PORT \
       -crdbPort ${RDB_CHAIN_PORTS[*]} \
+      -idbPort $IDB_PORT \
       -hdbPort ${ALL_HDB_PORTS[*]} \
       -analyticsDir $ANALYTIC_DIR \
       -procName GW < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
@@ -139,7 +164,7 @@ case "$proc_name" in
 
   *)
     echo "Unknown procName: $proc_name"
-    echo "Valid: TP | RDB | RDB_CHAIN_<N> | HDB | HDB_EXTRA_<N> | FH | RTE | GW"
+    echo "Valid: TP | RDB | RDB_CHAIN_<N> | IDB | HDB | HDB_EXTRA_<N> | FH | RTE | GW"
     exit 1
     ;;
 esac

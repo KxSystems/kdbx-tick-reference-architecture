@@ -36,7 +36,23 @@ FH_PORT: "I"$first CLI_ARGS[`fhPort];
 
 // Find pid of a q process by exact procName.
 .t.findPid:{[name]
-    first system "pgrep -af 'q.*-procName ",name,"(\\s|$)' | awk '{print $1}'"
+    // `pgrep -f` is portable (BSD + GNU); `pgrep -af` is not — on macOS BSD
+    // `-a` means "include ancestors", not "show command line", so the awk pipe
+    // was a no-op and the `(\s|$)` regex anchor wasn't supported either. The
+    // `| cat` suffix swallows pgrep / ps non-zero exits (no match, or pid
+    // raced and disappeared) which q's `system` would otherwise raise as `'os`
+    // — we deliberately avoid `|| true` here because it breaks q's stdout
+    // capture on some builds. We match loosely first, then filter via
+    // `ps -p <pid> -o args=` for an exact -procName match so e.g. "RDB" does
+    // not also match "RDB_CHAIN_0".
+    pids:system "pgrep -f 'q.*-procName ",name,"' | cat";
+    if[not count pids;:""];
+    pats:("*-procName ",name;"*-procName ",name," *");
+    m:{[pats;pid]
+        out:system "ps -p ",pid," -o args= | cat";
+        $[count out; any (first out) like/:pats; 0b]
+      }[pats] each pids;
+    $[count r:pids where m; first r; ""]
  };
 
 // Safe pid cast — returns 0Ni on empty string or cast failure.

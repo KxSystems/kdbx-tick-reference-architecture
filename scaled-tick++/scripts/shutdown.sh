@@ -9,7 +9,7 @@ for pid in $(pgrep -f "q.*-procName"); do
   [ -z "$cmd" ] && continue
   procname=$(echo "$cmd" | sed -n 's/.*-procName \([^ ]*\).*/\1/p')
   case "$procname" in
-    TP|RDB|RDB_CHAIN_*|HDB|HDB_EXTRA_*|FH|RTE|GW)
+    TP|RDB|RDB_CHAIN_*|IDB|HDB|HDB_EXTRA_*|FH|RTE|GW)
       kill -9 "$pid" 2>/dev/null
       echo -e "  $procname\t[$pid]"
       ;;

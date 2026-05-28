@@ -13,7 +13,13 @@ export RDB_PORT=5011
 export HDB_PORT=5012
 export GW_PORT=5013
 export FH_PORT=5014
+export IDB_PORT=5015
 export RTE_PORT=5016
+
+# Intraday writedown (scaled-tick++): the leader RDB flushes int-partitions into IDB_DIR
+# every FLUSH_INTV_MIN minutes; the single IDB serves them on the `idb` query tier.
+export IDB_DIR=$ROOT_DIR/app/idb
+export FLUSH_INTV_MIN=5
 
 # Feedhandler
 export FH_TIMER=60000

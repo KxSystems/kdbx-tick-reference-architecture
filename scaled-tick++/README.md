@@ -8,12 +8,29 @@ The architecture contained within this repository consists of the following q pr
 
 - **Tickerplant (TP)** — receives updates from the feedhandler and distributes them to all subscribers
 - **Feedhandler (FH)** — parses structured sample data and publishes to the tickerplant on a timer
-- **Realtime Database (RDB)** — subscribes to the tickerplant and holds today's data in memory; saves to HDB at end of day
-- **Historical Database (HDB)** — stores partitioned on-disk data, reloaded after each end-of-day save
+- **Realtime Database (RDB)** — the leader, *dedicated to intraday writedown*. Subscribes to the tickerplant, flushes rows older than the cutoff to int-partitions every `FLUSH_INTV_MIN` minutes (dropping them from memory and signalling the IDB), and at EOD merges those int-partitions into the HDB date partition. Does **not** serve `rdb`-tier queries
+- **Chained RDB replicas (RDB_CHAIN_i)** — full-data read replicas started with `-m`. They serve all `rdb`-tier queries via the gateway and provide leader failover: if the leader dies, the tickerplant promotes one into the writedown role (its `MAIN_FLAG`-gated flush then begins)
+- **Intraday Database (IDB)** — a single process (not replicated) that loads the int-partitions written by the leader and serves the `idb` query tier. Reloads on demand when the leader calls `.idb.reload[]` after each flush
+- **Historical Database (HDB)** — stores partitioned on-disk data, reloaded after each end-of-day save. Additional `HDB_EXTRA_i` instances start alongside the chained replicas
 - **Real-Time Engine (RTE)** — subscribes to the tickerplant, runs enrichment functions, and publishes derived tables back to the tickerplant
-- **Gateway (GW)** — routes queries to the RDB and/or HDB and serves REST endpoints for the analytics defined in `ANALYTIC_DIR`
+- **Gateway (GW)** — routes queries across the chained RDB followers (`rdb`), the IDB (`idb`), and the HDB(s) (`hdb`), plus an `all` fan-out; serves REST endpoints for the analytics defined in `ANALYTIC_DIR`
 
-In the documentation below it explains where to take schemas, sample data, and analytics from and how to change them. It also explains how to customise the architecture based on your use case, for example how to deploy more than one RDB/HDB.
+This combines the chained-RDB failover model with the intraday writedown path from [tick++](../tick++/README.md): the leader does the writedown that feeds the single IDB, while the chained replicas remain the query servers. The documentation below explains where to take schemas, sample data, and analytics from and how to change them, and how to customise the architecture — for example how to deploy more than one chained RDB/HDB pair.
+
+### Intraday Writedown Flow
+
+```
+                                                ┌──> RDB_CHAIN_0..N ──> (serve `rdb` queries + failover)
+TP ──> (sub) ──┬──> RDB (leader) ── flush N min ─┴──> <IDB_DIR>/today/<i>/<table>/
+               │                                 │
+               │                                 └─ async signal ──> IDB.reload[] ──> (serves `idb` queries)
+               │
+               └ EOD: leader merges all int-partitions into <HDB_DIR>/<date>/, reloads every HDB
+```
+
+The leader (`MAIN_FLAG=1b`) is the only RDB that writes down. Every `FLUSH_INTV_MIN` minutes it writes rows older than `now - FLUSH_INTV_MIN` to a fresh int-partition under `<IDB_DIR>/today/<i>/`, drops them from memory, and signals the IDB to reload. At EOD it flushes any remaining rows as the final int-partition, merges every int-partition into a sorted `p#sym` date partition under `<HDB_DIR>/<date>/`, clears the staging dir, reloads every HDB, and signals the IDB to clear. The next int-partition index is read from the staging dir, so a follower promoted to leader continues the sequence rather than clobbering it.
+
+Because the leader sheds flushed rows it would return inconsistent `rdb` results, so the gateway excludes it from the `rdb` pool (identified by polling `MAIN_FLAG`). At least one chained replica (`-m >= 1`) is therefore required to serve `rdb` queries; use `-m >= 2` for query continuity through a leader failure.
 
 ### Architecture Diagram
 
@@ -48,15 +65,18 @@ The following configuration steps are required before being able to run the tick
   | HDB_PORT                  | 5012                                              | Port for the historical database process.                                                                                |
   | GW_PORT                   | 5013                                              | Port for the gateway process (q-IPC and REST).                                                                           |
   | FH_PORT                   | 5014                                              | Port for the feedhandler process.                                                                                        |
+  | IDB_PORT                  | 5015                                              | Port for the single intraday database process.                                                                           |
   | RTE_PORT                  | 5016                                              | Port for the real-time engine process.                                                                                   |
   | FH_TIMER                  | 60000                                             | Feedhandler publish interval in milliseconds.                                                                            |
   | FH_ANALYTIC_DIR           | /path/to/repo/samples/data/fh-analytics           | Directory containing feedhandler parser `.q` files.                                                                      |
   | ANALYTIC_DIR              | /path/to/repo/samples/analytics                   | Directory containing REST endpoint analytics `.q` files loaded by the gateway.                                           |
   | RTE_ENRICH_FILE           | /path/to/repo/samples/enrichments/enrich-sample.q | Path to the enrichment file loaded by the real-time engine.                                                              |
+  | IDB_DIR                   | /path/to/repo/app/idb                             | Staging directory for intraday int-partitions (`<IDB_DIR>/today/<i>/`) written by the leader and served by the IDB.       |
+  | FLUSH_INTV_MIN            | 5                                                 | Intraday flush interval in minutes — how often the leader writes int-partitions and signals the IDB to reload.           |
   | PARALLEL_PORT_RANGE_START | 5020                                              | Starting port for additional RDB/HDB pairs started with `-m`. Pairs use ports `start+2i` (RDB_CHAIN_i) and `start+2i+1` (HDB_EXTRA_i). |
 
 - Create a `.q` file in `SCHEMA_DIR` containing schemas of tables to be used by the system. Multiple schema files can be used.
-- Create the `app/tplogs`, `app/hdb`, and `app/proclogs` directories.
+- Create the `app/tplogs`, `app/hdb`, `app/idb`, and `app/proclogs` directories.
 - Ensure scripts under `scripts/` are executable.
 
 #### Directory creation
@@ -64,7 +84,7 @@ The following configuration steps are required before being able to run the tick
 ```bash
 cp samples/sample_env .env && \
 source .env && \
-mkdir -p $TPLOG_DIR $HDB_DIR $PROCESS_LOG_DIR
+mkdir -p $TPLOG_DIR $HDB_DIR $IDB_DIR $PROCESS_LOG_DIR
 ```
 
 ### Start
@@ -73,20 +93,29 @@ To run the system, execute the startup script from the project root:
 
 ```bash
 $ ./scaled-tick++/scripts/startup.sh
-Starting Tick Reference Architecture...
+Starting Scaled Tick++ Reference Architecture...
   .env:             [.env]
   Secondaries:      [0]
-  Chained RDBs:     [0]
+  Chained RDBs:     [1]
+  Flush interval:   [5 min]
+  RDB chain ports:  [5020]
+  HDB extra ports:  [5021]
 
   Started TP        [5010]
+  Started IDB       [5015]
   Started RDB       [5011]
+  Started RDB_CHAIN_0 [5020]
   Started HDB       [5012]
+  Started HDB_EXTRA_0 [5021]
   Started FH        [5014]
   Started RTE       [5016]
   Started GW        [5013]
 
 Stack started. Logs: app/proclogs/startup.log
 ```
+
+> The leader `RDB` is dedicated to writedown and does not serve `rdb`-tier queries, so at
+> least one chained replica is required — `-m` defaults to `1` and a value below `1` is rejected.
 
 This assumes `.env` is in the project root. For a file stored elsewhere use the `-e` flag:
 
@@ -111,14 +140,14 @@ $ ./scaled-tick++/scripts/startup.sh -e /path/to/.env
 
 - **-m**
 
-  Number of chained RDB replicas (and paired HDB instances) to start for failover. The leader RDB (`RDB`) handles end-of-day saves; each `RDB_CHAIN_i` is a read-only follower. The gateway queries all live RDB and HDB instances.
+  Number of chained RDB replicas (and paired HDB instances) to start. Each `RDB_CHAIN_i` is a full-data read replica that serves `rdb`-tier queries and can be promoted to the writedown leader on failover. The leader RDB (`RDB`) is dedicated to writedown and is **not** in the query pool, so at least one replica is required.
 
-  Defaults to 0.
+  Defaults to 1 (minimum 1). Use `-m 2` or more for query continuity through a leader failure — when the leader dies one replica is promoted into the writedown role, so a second replica must remain to keep serving `rdb` queries.
 
   Reference: https://code.kx.com/q/kb/kdb-tick/#chained-rdbs
 
   ```bash
-  $ ./scaled-tick++/scripts/startup.sh -m 1
+  $ ./scaled-tick++/scripts/startup.sh -m 2
   ```
 
 </details>
@@ -130,12 +159,15 @@ To stop the system run the shutdown script from the project root:
 ```bash
 $ ./scaled-tick++/scripts/shutdown.sh
 Killing processes:
-  TP     [118666]
-  RDB    [118667]
-  HDB    [118668]
-  FH     [118669]
-  RTE    [118670]
-  GW     [118671]
+  TP          [118666]
+  IDB         [118667]
+  RDB         [118668]
+  RDB_CHAIN_0 [118669]
+  HDB         [118670]
+  HDB_EXTRA_0 [118671]
+  FH          [118672]
+  RTE         [118673]
+  GW          [118674]
 ```
 
 ### Data Ingestion
@@ -199,9 +231,14 @@ $ pgrep -af -- -procName
 
 ### Failover
 
-When running with `-m N`, the first RDB (`RDB`) acts as the leader and any additional `RDB_CHAIN_i` instances start as followers. Only the leader carries out end-of-day saves and HDB reloads. If `RDB` fails, the tickerplant promotes the first available `RDB_CHAIN` to leader.
+The first RDB (`RDB`) is the leader and holds the writedown role (`MAIN_FLAG=1b`): it flushes int-partitions to the IDB and merges them into the HDB at EOD. Each `RDB_CHAIN_i` starts as a follower that serves `rdb`-tier queries. If the leader fails, the tickerplant (`.u.failoverRDB`) promotes the first available follower by flipping its `MAIN_FLAG` over IPC; the promoted follower then begins writing down (its flush is `MAIN_FLAG`-gated and picks up the existing int-partition sequence from the staging dir).
 
-_Note: If the leader RDB fails it should NOT be restarted as leader. Start a new `RDB_CHAIN` to return to the desired replica count._
+Because the leader sheds flushed rows, the gateway excludes it from the `rdb` query pool — it identifies the current leader by polling each RDB's `MAIN_FLAG`, so promotion is reflected on the next query with no gateway restart. The promoted follower likewise leaves the query pool, so:
+
+- `-m 1` survives normal operation (1 writedown leader + 1 query replica) but a leader failure leaves no query replica until you start a new one.
+- `-m 2` or more keeps `rdb` queries flowing through a leader failure (one replica is promoted, the rest keep serving).
+
+_Note: if the leader RDB fails it should **not** be restarted as `RDB` — a follower has already been promoted, and a second `MAIN_FLAG=1b` process would write down into the same staging dir. Start a new `RDB_CHAIN_<N>` instead to return to the desired replica count._
 
 The gateway connects to all DB processes on startup. If a process is restarted while the gateway is running, the gateway will reconnect automatically on its next timer tick (every 60 seconds).
 
@@ -214,15 +251,20 @@ The gateway exposes `.kxgw.query[target; query]` for synchronous queries from q 
 ```q
 gwh: hopen `$"::",string GW_PORT
 
-// Query the RDB
+// Query the chained RDB followers (most recent in-memory data, not yet flushed)
 gwh (`.kxgw.query; `rdb; "select from energy")
 
-// Query the HDB
+// Query the IDB (today's flushed int-partitions, in memory from disk)
+gwh (`.kxgw.query; `idb; "select from energy")
+
+// Query the HDB (historical, post-EOD)
 gwh (`.kxgw.query; `hdb; "select from energy where date=.z.d-1")
 
-// Query both (returns dict with `rdb`hdb keys)
-gwh (`.kxgw.query; `both; "select from energy")
+// Fan out across all three tiers (RDB + IDB + HDB); returns `rdb`idb`hdb!(...)
+gwh (`.kxgw.query; `all; "select from energy")
 ```
+
+Note: the `rdb` tier is served by the chained RDB followers, **not** the writedown leader — the leader sheds flushed rows and never serves queries.
 
 See `samples/analytics/endpoints-examples.q` for further examples.
 
@@ -360,6 +402,7 @@ FH_20260506T090736457.log
 GW_20260506T090736411.log
 HDB_20260506T090736461.log
 HDB_EXTRA_0_20260506T090736518.log
+IDB_20260506T090736459.log
 RDB_20260506T090737390.log
 RDB_CHAIN_0_20260506T090737435.log
 RTE_20260506T090736460.log
@@ -423,9 +466,10 @@ stop_fh_timer    # pause ingest
 
 ## Testing
 
-An end-to-end test suite is provided at `tests/e2e-test.q`. It covers data ingestion, q-IPC and REST queries, EOD, failover, and operational scripts. Run it from the project root after starting the stack:
+An end-to-end test suite is provided at `tests/e2e-test.q`. It covers data ingestion, q-IPC and REST queries, EOD, failover, and operational scripts. Start the stack with **`-m 2`** before running it — the failover phase kills the leader (promoting one replica into the writedown role) and asserts that `rdb` queries continue via the surviving replica:
 
 ```bash
+./scaled-tick++/scripts/startup.sh -m 2
 source .env && q scaled-tick++/tests/e2e-test.q -gwPort $GW_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
 ```
 
@@ -450,11 +494,12 @@ scaled-tick++/
 │   ├── api-test.q
 │   ├── e2e-test.q
 │   └── rest-test.q
-├── tick/
+├── src/
 │   ├── client.q
 │   ├── fh.q
 │   ├── gw.q
 │   ├── hdb.q
+│   ├── idb.q
 │   ├── rdb.q
 │   ├── rte.q
 │   ├── tick.q
@@ -495,8 +540,17 @@ app/
 │   │       ├── sym
 │   │       └── time
 │   └── sym
+├── idb/
+│   └── today/              # intraday staging (cleared at EOD)
+│       ├── 0/              # int-partition written by the leader's first flush
+│       │   ├── energy/
+│       │   ├── weather/
+│       │   └── weatherHeatIndex/
+│       └── 1/              # ...subsequent flushes
+│           └── ...
 ├── proclogs/
 │   ├── GW_<datetime>.log
+│   ├── IDB_<datetime>.log
 │   ├── RDB_<datetime>.log
 │   └── ...
 └── tplogs/
