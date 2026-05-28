@@ -14,13 +14,14 @@
 // remain to demonstrate query continuity.
 //
 // Usage (from project root):
-//   source .env && q scaled-tick++/tests/e2e-test.q -gwPort $GW_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
+//   source .env && q scaled-tick++/tests/e2e-test.q -gwPort $GW_PORT -restPort $REST_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
 
 system "l scaled-tick++/utils/main.q";
 
-GW_PORT: "I"$first CLI_ARGS[`gwPort];
-TP_PORT: "I"$first CLI_ARGS[`tpPort];
-FH_PORT: "I"$first CLI_ARGS[`fhPort];
+GW_PORT:   "I"$first CLI_ARGS[`gwPort];
+REST_PORT: "I"$first CLI_ARGS[`restPort];
+TP_PORT:   "I"$first CLI_ARGS[`tpPort];
+FH_PORT:   "I"$first CLI_ARGS[`fhPort];
 
 // ── Harness ───────────────────────────────────────────────────────────────
 .t.pass:0; .t.fail:0;
@@ -132,8 +133,8 @@ all5:gwh(`.kxgw.query; `all; "select from energy");
 // and return JSON arrays rather than error bodies with HTTP 200.
 .t.section "Phase 6: REST endpoint tests post-EOD (rest-test.q)";
 
-restCmd:"q scaled-tick++/tests/rest-test.q -gwPort ",string[GW_PORT]," 2>&1";
-.log.info["Running: q scaled-tick++/tests/rest-test.q -gwPort ",string GW_PORT];
+restCmd:"q scaled-tick++/tests/rest-test.q -restPort ",string[REST_PORT]," 2>&1";
+.log.info["Running: q scaled-tick++/tests/rest-test.q -restPort ",string REST_PORT];
 .t.check["rest-test.q passed"; {x}; .t.runScript[restCmd]];
 
 // ── Phase 7: RDB leader failover ──────────────────────────────────────────
@@ -150,7 +151,10 @@ rdbPidI:.t.toPid[rdbPid];
 if[not null rdbPidI;
     .log.info["Killing RDB leader (pid ",rdbPid,")..."];
     system "kill -9 ",rdbPid;
-    system "sleep 2";
+    // The GW caches leader flags on a 2s timer; sleep long enough for the
+    // surviving follower's promotion to be observed by the GW's next refresh
+    // before issuing the verification query.
+    system "sleep 3";
     failRes:gwh(`.kxgw.query; `rdb; "select from energy");
     .t.check["rdb queries continue via a surviving follower after leader failure";
         {98h=type x};

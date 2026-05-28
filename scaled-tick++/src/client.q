@@ -1,9 +1,5 @@
 // scaled-tick++/src/client.q - Interactive Q Client
 //
-// Usage: source .env && q scaled-tick++/src/client.q -gwPort $GW_PORT -rtePort $RTE_PORT \
-//          -rdbPort $RDB_PORT -hdbPort $HDB_PORT -tpPort $TICK_PORT -fhPort $FH_PORT \
-//          -procName client1
-//
 // Opens IPC handles to each process in the stack so the running q session can issue
 // queries directly. Failed connections log a warning and leave the handle null; the
 // process continues so partial-stack scenarios are still usable.
@@ -15,6 +11,10 @@
 //   GW_H (`.kxgw.query; `all;  ("select from energy"; "select from energy"; "select from energy where date=2026.04.17"))
 //   RDB_H "tables[]"
 //   HDB_H "tables[]"
+//
+// Usage: source .env && q scaled-tick++/src/client.q -gwPort $GW_PORT -rtePort $RTE_PORT \
+//          -rdbPort $RDB_PORT -hdbPort $HDB_PORT -tpPort $TICK_PORT -fhPort $FH_PORT \
+//          -procName client1
 
 system"l scaled-tick++/utils/main.q";
 

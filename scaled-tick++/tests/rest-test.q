@@ -1,16 +1,17 @@
 // REST API test script
-// Exercises the /energy/* and /weather/* endpoints served by the GW,
-// asserting HTTP status + JSON body shape for success and 404 paths.
-// Usage: source .env && q scaled-tick++/tests/rest-test.q -gwPort $GW_PORT -procName rest-test
-//   -gwHost  (optional, default: localhost)
+// Exercises the /energy/* and /weather/* endpoints served by REST_GW (a thin
+// HTTP front-end that delegates to GW via q-IPC + deferred sync). Asserts HTTP
+// status + JSON body shape for success and 404 paths.
+// Usage: source .env && q scaled-tick++/tests/rest-test.q -restPort $REST_PORT -procName rest-test
+//   -restHost  (optional, default: localhost)
 
 args:.Q.opt .z.x;
 
-gwHost:$[`gwHost in key args; first args`gwHost; "localhost"];
-gwPort:"J"$first args`gwPort;
+restHost:$[`restHost in key args; first args`restHost; "localhost"];
+restPort:"J"$first args`restPort;
 
 curlFlags:"";
-base:"http://",gwHost,":",string gwPort;
+base:"http://",restHost,":",string restPort;
 
 pass:0;
 fail:0;
@@ -148,7 +149,11 @@ r:.t.timeMany["/energy/rdb"; n];
 
 -1 "  baseline single-call:       ",.t.ms[baseline]," ms";
 -1 "  ",(string n)," concurrent total:         ",.t.ms[r`elapsed]," ms";
--1 "  (if strictly serialised: ~",.t.ms[n*`long$baseline]," ms; lower wall-clock is from client-side fan-out, not GW parallelism)";
+-1 "  (if strictly serialised: ~",.t.ms[n*`long$baseline]," ms.";
+-1 "   The GW itself is non-blocking via -30! deferred sync, but a single";
+-1 "   REST_GW process is single-threaded q and serialises its own HTTP";
+-1 "   queue. To scale HTTP concurrency raise REST_GW_COUNT — each adds";
+-1 "   another front-end sharing REST_PORT via SO_REUSEPORT.)";
 
 run[(string n)," concurrent calls all return 200";
     {[n;r] (n=count r`codes) and all 200=r`codes}[n;];

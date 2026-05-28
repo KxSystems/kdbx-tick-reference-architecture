@@ -1,4 +1,24 @@
-// scaled-tick++/src/rdb.q - Realtime Database Process (Leader writedown / Chain follower)
+// scaled-tick++/src/rdb.q - Realtime Database
+//
+// Subscribes to the Tickerplant (with exponential-backoff retry) and holds today's
+// data in memory. The single process serves two roles distinguished by `MAIN_FLAG`:
+//     leader (MAIN_FLAG=1b)   — dedicated to writedown. Every `-flushIntvMin` minutes it
+//                               flushes rows older than the cutoff to int-partitions under
+//                               <IDB_DIR>/today/<i>/, drops them from memory, and signals the
+//                               IDB to reload. At EOD it merges those int-partitions into the
+//                               HDB date partition and reloads every HDB. It does NOT serve
+//                               `rdb`-tier queries (the gateway routes those to followers)
+//     follower (MAIN_FLAG=0b) — full-data read replica. Serves `rdb`-tier queries via the
+//                               gateway and clears its tables on EOD without writing down
+//
+// All RDBs are configured for writedown (idb endpoint, staging dir, flush interval) because
+// any follower may be promoted to leader by `.u.failoverRDB` (tick.q) — the flush is gated on
+// `MAIN_FLAG`, so a promoted follower begins writing down automatically. The next int-partition
+// index is derived from the staging dir, so a promoted leader continues the prior sequence
+// rather than clobbering existing partitions
+//
+// If the TP is unreachable after all retries, schemas are loaded from $SCHEMA_DIR
+// so the process stays alive (empty tables) and reconnects on a 60s timer
 //
 // q scaled-tick++/src/rdb.q -p $RDB_PORT       -tpPort $TICK_PORT -hdbPort $HDB_PORTS \
 //                     -idbPort $IDB_PORT -idbDir $IDB_DIR -flushIntvMin $FLUSH_INTV_MIN \
@@ -6,26 +26,6 @@
 // q scaled-tick++/src/rdb.q -p $RDB_CHAIN_PORT -tpPort $TICK_PORT -hdbPort $HDB_PORTS \
 //                     -idbPort $IDB_PORT -idbDir $IDB_DIR -flushIntvMin $FLUSH_INTV_MIN \
 //                     -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -procName RDB_CHAIN_<N>
-//
-// Subscribes to the Tickerplant (with exponential-backoff retry) and holds today's
-// data in memory. The single process serves two roles distinguished by `MAIN_FLAG`:
-//   • leader (MAIN_FLAG=1b)   — dedicated to writedown. Every `-flushIntvMin` minutes it
-//                               flushes rows older than the cutoff to int-partitions under
-//                               <IDB_DIR>/today/<i>/, drops them from memory, and signals the
-//                               IDB to reload. At EOD it merges those int-partitions into the
-//                               HDB date partition and reloads every HDB. It does NOT serve
-//                               `rdb`-tier queries (the gateway routes those to followers).
-//   • follower (MAIN_FLAG=0b) — full-data read replica. Serves `rdb`-tier queries via the
-//                               gateway and clears its tables on EOD without writing down.
-//
-// All RDBs are configured for writedown (idb endpoint, staging dir, flush interval) because
-// any follower may be promoted to leader by `.u.failoverRDB` (tick.q) — the flush is gated on
-// `MAIN_FLAG`, so a promoted follower begins writing down automatically. The next int-partition
-// index is derived from the staging dir, so a promoted leader continues the prior sequence
-// rather than clobbering existing partitions.
-//
-// If the TP is unreachable after all retries, schemas are loaded from $SCHEMA_DIR
-// so the process stays alive (empty tables) and reconnects on a 60s timer.
 
 if[not "w"=first string .z.o;system "sleep 1"];
 
@@ -235,7 +235,19 @@ if[not .rdb.connectTPWithRetry[10];
     ];
     };
 
-// @desc Evaluate incoming async messages — required for receiving TP upd calls
+// @desc Evaluate a GW-dispatched query and async-respond with the result
+// Called from the GW via (neg h)(`.gw.evalAndRespond; reqID; tier; query)
+// Errors are caught and returned as (`error`msg!``) so the callback path never crashes the DB
+//
+// @param reqID   {guid}      Request id originally assigned by the GW
+// @param tier    {symbol}    `rdb, `hdb, or `idb — caller's tier label
+// @param query   {*}         Query payload — string / parse-tree / projection
+.gw.evalAndRespond:{[reqID;tier;query]
+    res:@[value; query; {`error`msg!("Query failed";x)}];
+    (neg .z.w) (`.kxgw.callback; reqID; tier; res)
+    };
+
+// @desc Evaluate incoming async messages — required for TP upd calls and GW dispatches
 .z.ps:{value x};
 
 // 60s housekeeping timer (reconnect, log rollover, etc.)

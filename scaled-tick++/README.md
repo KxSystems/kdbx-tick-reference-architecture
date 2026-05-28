@@ -13,9 +13,10 @@ The architecture contained within this repository consists of the following q pr
 - **Intraday Database (IDB)** — a single process (not replicated) that loads the int-partitions written by the leader and serves the `idb` query tier. Reloads on demand when the leader calls `.idb.reload[]` after each flush
 - **Historical Database (HDB)** — stores partitioned on-disk data, reloaded after each end-of-day save. Additional `HDB_EXTRA_i` instances start alongside the chained replicas
 - **Real-Time Engine (RTE)** — subscribes to the tickerplant, runs enrichment functions, and publishes derived tables back to the tickerplant
-- **Gateway (GW)** — routes queries across the chained RDB followers (`rdb`), the IDB (`idb`), and the HDB(s) (`hdb`), plus an `all` fan-out; serves REST endpoints for the analytics defined in `ANALYTIC_DIR`
+- **Gateway (GW)** — *pure q-IPC* entry point with **deferred-sync** routing (`-30!`). Receives sync requests from q clients and REST_GW(s), assigns each a guid, async-dispatches to the chosen DB replica(s), and resumes the client response from a callback. Stays non-blocking under load so the chained replicas / IDB / HDB can actually serve in parallel. Routes across four tiers: `rdb`, `idb`, `hdb`, and `all` (3-way fan-out)
+- **REST Gateway (REST_GW_i)** — thin HTTP front-end loading `kx.rest` and the analytics from `ANALYTIC_DIR`. Endpoint handlers call `.restgw.query` which is a sync IPC call to GW; the GW's deferred-sync mechanic naturally unblocks the REST_GW when the result is ready. N instances share `REST_PORT` via SO_REUSEPORT (`-p rp,$REST_PORT`); on Linux the kernel load-balances HTTP connections across them, scaling HTTP throughput independently of the replica count
 
-This combines the chained-RDB failover model with the intraday writedown path from [tick++](../tick++/README.md): the leader does the writedown that feeds the single IDB, while the chained replicas remain the query servers. The documentation below explains where to take schemas, sample data, and analytics from and how to change them, and how to customise the architecture — for example how to deploy more than one chained RDB/HDB pair.
+This combines the chained-RDB failover model with the intraday writedown path from [tick++](../tick++/README.md) and the canonical kdb+ deferred-sync gateway pattern: the leader does the writedown that feeds the single IDB; the chained replicas remain the query servers; and the GW + REST_GW split keeps the gateway non-blocking while preserving the existing sync `.kxgw.query` API for callers. The documentation below explains where to take schemas, sample data, and analytics from and how to change them, and how to customise the architecture — for example how to deploy more than one chained RDB/HDB pair or scale HTTP front-ends.
 
 ### Intraday Writedown Flow
 
@@ -30,7 +31,35 @@ TP ──> (sub) ──┬──> RDB (leader) ── flush N min ─┴──> 
 
 The leader (`MAIN_FLAG=1b`) is the only RDB that writes down. Every `FLUSH_INTV_MIN` minutes it writes rows older than `now - FLUSH_INTV_MIN` to a fresh int-partition under `<IDB_DIR>/today/<i>/`, drops them from memory, and signals the IDB to reload. At EOD it flushes any remaining rows as the final int-partition, merges every int-partition into a sorted `p#sym` date partition under `<HDB_DIR>/<date>/`, clears the staging dir, reloads every HDB, and signals the IDB to clear. The next int-partition index is read from the staging dir, so a follower promoted to leader continues the sequence rather than clobbering it.
 
-Because the leader sheds flushed rows it would return inconsistent `rdb` results, so the gateway excludes it from the `rdb` pool (identified by polling `MAIN_FLAG`). At least one chained replica (`-m >= 1`) is therefore required to serve `rdb` queries; use `-m >= 2` for query continuity through a leader failure.
+Because the leader sheds flushed rows it would return inconsistent `rdb` results, so the gateway excludes it from the `rdb` pool. The current leader is identified by polling each RDB's `MAIN_FLAG` on a 2-second timer (not per query — see the gateway section below). At least one chained replica (`-m >= 1`) is therefore required to serve `rdb` queries; use `-m >= 2` for query continuity through a leader failure.
+
+### Deferred-Sync Gateway
+
+The gateway is the canonical kdb+ "deferred-sync" pattern. A client sends a normal *synchronous* request (`gwh (`.kxgw.query; `rdb; "...")`); the GW immediately defers the response, async-dispatches to a chosen DB, and resumes the client when the DB calls back:
+
+```
+client      GW                                          RDB_CHAIN_i
+  ──sync──► .z.pg → .kxgw.query
+              reqID = first -1?0Ng
+              REQUESTS upsert (reqID; .z.w; .z.P; target)
+              h = .kxgw.getRDB[]      // cached leader flag, no IPC poll
+              (neg h)(`.gw.evalAndRespond; reqID; `rdb; query)   async ►
+              -30!(::)                                              evals query
+              (GW free to dispatch other reqs)                    ◄ async (`.kxgw.callback; reqID; `rdb; result)
+              .z.ps → .kxgw.callback → -30!(.z.w; 0b; result) ►
+  ◄ unblocks with result
+```
+
+The contract:
+
+- **Sync API preserved.** Clients see the request and response exactly as before — no callback registration on the client side, no API break. `api-test.q` and `client.q` continue to use the existing `gwh (`.kxgw.query; ...)` form.
+- **Replicas actually run in parallel.** While query A is in flight against `RDB_CHAIN_0`, the GW can already have dispatched query B to `RDB_CHAIN_1`, query C to the IDB, and so on. There is no per-GW serialization point.
+- **`all` is a real fan-out.** For `target=`all` the GW fires three async dispatches (rdb / idb / hdb) and accumulates the per-tier results in `PENDING_ALL[reqID]`. When all three have arrived it emits `` `rdb`idb`hdb!(rr;ir;hr) `` to the client. Pass a single query (applied to all three) or a 3-element list `(rdbQuery; idbQuery; hdbQuery)` for per-tier customization.
+- **Leader detection is timer-cached.** `.kxgw.refreshLeaders` is on a 2 s timer + on every `.z.pc` for an RDB handle. The previous per-query MAIN_FLAG poll would re-block the GW the moment it dispatched, so polling has been deliberately moved off the hot path. The failover-detection window is bounded at 2 s.
+- **Timeouts are tagged.** `REQ_TIMEOUT` (default `0D00:01:00`, configurable via `-reqTimeout` / `.env`) bounds how long a request can sit in `REQUESTS`. On expiry the GW sends `-30!(clientH; 1b; "TIMEOUT: Request timed out")` — the client's sync send raises a signal, which q-IPC clients catch via `@[gwh; ...; errFn]` and REST_GW catches and tags as `UNAVAIL`/`TIMEOUT`/`QUERY` for an HTTP 500 response.
+- **Disconnects clean themselves up.** When a client (q-IPC or REST_GW) drops, the GW's `.z.pc` removes any in-flight `REQUESTS` rows belonging to that handle. When a DB drops, the alive flag is cleared and leaders are re-polled; in-flight rows targeting that DB are reaped by the next timeout sweep.
+
+REST endpoints get the same concurrency benefit indirectly: each REST_GW is itself a sync IPC client of the GW, so its HTTP handler blocks on a single sync call (no busy-wait) and unblocks when the GW resumes. A single REST_GW still serialises *its own* HTTP queue, so to scale HTTP concurrency raise `REST_GW_COUNT` — N front-ends sharing `REST_PORT` via SO_REUSEPORT.
 
 ### Architecture Diagram
 
@@ -67,12 +96,15 @@ The following configuration steps are required before being able to run the tick
   | FH_PORT                   | 5014                                              | Port for the feedhandler process.                                                                                        |
   | IDB_PORT                  | 5015                                              | Port for the single intraday database process.                                                                           |
   | RTE_PORT                  | 5016                                              | Port for the real-time engine process.                                                                                   |
+  | REST_PORT                 | 5018                                              | HTTP port served by REST_GW(s). Shared across all REST_GW instances via SO_REUSEPORT (`-p rp,$REST_PORT`).                |
   | FH_TIMER                  | 60000                                             | Feedhandler publish interval in milliseconds.                                                                            |
   | FH_ANALYTIC_DIR           | /path/to/repo/samples/data/fh-analytics           | Directory containing feedhandler parser `.q` files.                                                                      |
   | ANALYTIC_DIR              | /path/to/repo/samples/analytics                   | Directory containing REST endpoint analytics `.q` files loaded by the gateway.                                           |
   | RTE_ENRICH_FILE           | /path/to/repo/samples/enrichments/enrich-sample.q | Path to the enrichment file loaded by the real-time engine.                                                              |
   | IDB_DIR                   | /path/to/repo/app/idb                             | Staging directory for intraday int-partitions (`<IDB_DIR>/today/<i>/`) written by the leader and served by the IDB.       |
   | FLUSH_INTV_MIN            | 5                                                 | Intraday flush interval in minutes — how often the leader writes int-partitions and signals the IDB to reload.           |
+  | REQ_TIMEOUT               | 0D00:01:00                                        | Per-request timeout (timespan) in the deferred-sync GW. Expired requests are returned to the client as a tagged signal.   |
+  | REST_GW_COUNT             | 1                                                 | Number of REST_GW front-ends to launch. Each shares `REST_PORT` via SO_REUSEPORT; raise on Linux for HTTP concurrency.     |
   | PARALLEL_PORT_RANGE_START | 5020                                              | Starting port for additional RDB/HDB pairs started with `-m`. Pairs use ports `start+2i` (RDB_CHAIN_i) and `start+2i+1` (HDB_EXTRA_i). |
 
 - Create a `.q` file in `SCHEMA_DIR` containing schemas of tables to be used by the system. Multiple schema files can be used.
@@ -98,8 +130,10 @@ Starting Scaled Tick++ Reference Architecture...
   Secondaries:      [0]
   Chained RDBs:     [1]
   Flush interval:   [5 min]
+  Req timeout:      [0D00:01:00]
   RDB chain ports:  [5020]
   HDB extra ports:  [5021]
+  REST_GWs:         [1]  (shared port rp,5018)
 
   Started TP        [5010]
   Started IDB       [5015]
@@ -110,12 +144,15 @@ Starting Scaled Tick++ Reference Architecture...
   Started FH        [5014]
   Started RTE       [5016]
   Started GW        [5013]
+  Started REST_GW_0 [rp,5018]
 
 Stack started. Logs: app/proclogs/startup.log
 ```
 
 > The leader `RDB` is dedicated to writedown and does not serve `rdb`-tier queries, so at
 > least one chained replica is required — `-m` defaults to `1` and a value below `1` is rejected.
+> The GW listens for q-IPC on `GW_PORT=5013`; HTTP/REST clients connect to `REST_PORT=5018`
+> served by `REST_GW_0..N` (raise `REST_GW_COUNT` for parallel HTTP throughput on Linux).
 
 This assumes `.env` is in the project root. For a file stored elsewhere use the `-e` flag:
 
@@ -168,6 +205,7 @@ Killing processes:
   FH          [118672]
   RTE         [118673]
   GW          [118674]
+  REST_GW_0   [118675]
 ```
 
 ### Data Ingestion
@@ -221,6 +259,7 @@ To restart a single named process without taking down the whole stack:
 $ ./scaled-tick++/scripts/restart.sh GW
 $ ./scaled-tick++/scripts/restart.sh RTE
 $ ./scaled-tick++/scripts/restart.sh RDB_CHAIN_0 -m 1
+$ ./scaled-tick++/scripts/restart.sh REST_GW_0
 ```
 
 To identify running processes:
@@ -233,14 +272,14 @@ $ pgrep -af -- -procName
 
 The first RDB (`RDB`) is the leader and holds the writedown role (`MAIN_FLAG=1b`): it flushes int-partitions to the IDB and merges them into the HDB at EOD. Each `RDB_CHAIN_i` starts as a follower that serves `rdb`-tier queries. If the leader fails, the tickerplant (`.u.failoverRDB`) promotes the first available follower by flipping its `MAIN_FLAG` over IPC; the promoted follower then begins writing down (its flush is `MAIN_FLAG`-gated and picks up the existing int-partition sequence from the staging dir).
 
-Because the leader sheds flushed rows, the gateway excludes it from the `rdb` query pool — it identifies the current leader by polling each RDB's `MAIN_FLAG`, so promotion is reflected on the next query with no gateway restart. The promoted follower likewise leaves the query pool, so:
+Because the leader sheds flushed rows, the gateway excludes it from the `rdb` query pool. The current leader is identified by polling each RDB's `MAIN_FLAG` on a **2-second timer** (and immediately on any `.z.pc` for an RDB handle) — *not* per query, because synchronous polling inside the deferred-sync path would re-block the GW the moment it dispatched. The promoted follower likewise leaves the query pool, so:
 
 - `-m 1` survives normal operation (1 writedown leader + 1 query replica) but a leader failure leaves no query replica until you start a new one.
 - `-m 2` or more keeps `rdb` queries flowing through a leader failure (one replica is promoted, the rest keep serving).
 
 _Note: if the leader RDB fails it should **not** be restarted as `RDB` — a follower has already been promoted, and a second `MAIN_FLAG=1b` process would write down into the same staging dir. Start a new `RDB_CHAIN_<N>` instead to return to the desired replica count._
 
-The gateway connects to all DB processes on startup. If a process is restarted while the gateway is running, the gateway will reconnect automatically on its next timer tick (every 60 seconds).
+The gateway connects to all DB processes on startup. Failover-detection window is bounded at 2 s. Reconnection to a restarted DB happens within the same 2 s timer. In-flight requests that were dispatched to a now-dead DB are reaped by the `REQ_TIMEOUT` sweep (default 60 s) — clients receive a `"TIMEOUT: Request timed out"` signal.
 
 ### Querying
 
@@ -270,7 +309,11 @@ See `samples/analytics/endpoints-examples.q` for further examples.
 
 #### REST
 
-The gateway also serves REST endpoints defined by the analytics files in `ANALYTIC_DIR`. The sample analytics expose the following endpoints:
+REST endpoints are served by `REST_GW_0..N` on `REST_PORT` (default `5018`) — not by the GW itself. Each REST_GW loads `kx.rest` plus the analytics in `ANALYTIC_DIR`; endpoint handlers call `.restgw.query[target; query]` which is a sync IPC call to the GW. The GW handles deferred sync, the REST_GW's sync call blocks (no busy wait) until the result is ready, kx.rest serialises it to JSON, and the HTTP client gets a normal response.
+
+REST_GWs share `REST_PORT` via SO_REUSEPORT — on Linux, raising `REST_GW_COUNT` scales HTTP throughput because the kernel load-balances incoming connections across the front-ends.
+
+The sample analytics expose the following endpoints:
 
 <details>
 <summary>REST API Reference</summary>
@@ -286,8 +329,8 @@ Query the energy table on the RDB (realtime data).
 | s         | No       | Symbol    | (all)                      | Sym filter (e.g. BLOWER78_1) |
 
 ```bash
-curl "localhost:${GW_PORT}/energy/rdb"
-curl "localhost:${GW_PORT}/energy/rdb?s=BLOWER78_1"
+curl "localhost:${REST_PORT}/energy/rdb"
+curl "localhost:${REST_PORT}/energy/rdb?s=BLOWER78_1"
 ```
 
 ### /energy/hdb
@@ -302,7 +345,7 @@ Query the energy table on the HDB (historical data).
 | s         | No       | Symbol    | (all)    | Sym filter            |
 
 ```bash
-curl "localhost:${GW_PORT}/energy/hdb?d=2026.05.06"
+curl "localhost:${REST_PORT}/energy/hdb?d=2026.05.06"
 ```
 
 ### /energy/meta
@@ -310,7 +353,7 @@ curl "localhost:${GW_PORT}/energy/hdb?d=2026.05.06"
 Returns the schema of the energy table.
 
 ```bash
-curl "localhost:${GW_PORT}/energy/meta"
+curl "localhost:${REST_PORT}/energy/meta"
 ```
 
 ### /weather/rdb, /weather/hdb, /weather/meta
@@ -405,6 +448,7 @@ HDB_EXTRA_0_20260506T090736518.log
 IDB_20260506T090736459.log
 RDB_20260506T090737390.log
 RDB_CHAIN_0_20260506T090737435.log
+REST_GW_0_20260506T090736600.log
 RTE_20260506T090736460.log
 TP_20260506T090736465.log
 startup.log
@@ -470,7 +514,8 @@ An end-to-end test suite is provided at `tests/e2e-test.q`. It covers data inges
 
 ```bash
 ./scaled-tick++/scripts/startup.sh -m 2
-source .env && q scaled-tick++/tests/e2e-test.q -gwPort $GW_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
+source .env && q scaled-tick++/tests/e2e-test.q -gwPort $GW_PORT -restPort $REST_PORT \
+    -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
 ```
 
 Results are written to `app/proclogs/e2e_<datetime>.log` in the same structured format as all other process logs.
@@ -501,6 +546,7 @@ scaled-tick++/
 │   ├── hdb.q
 │   ├── idb.q
 │   ├── rdb.q
+│   ├── rest-gw.q
 │   ├── rte.q
 │   ├── tick.q
 │   └── u.q

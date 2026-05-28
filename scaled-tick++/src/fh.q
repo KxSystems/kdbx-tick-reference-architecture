@@ -1,11 +1,11 @@
 // scaled-tick++/src/fh.q - Feedhandler Process
 //
-// q scaled-tick++/src/fh.q -p $FH_PORT -tpPort $TICK_PORT -fhDir $FH_ANALYTIC_DIR \
-//                    -fhTimer $FH_TIMER -procName FH
-//
 // Connects to the Tickerplant with exponential-backoff retry, loads every `.q` analytic file
 // from `-fhDir` (each expected to populate the `.fh.upsert` namespace), and pushes a batch
-// from each registered upsert to the TP on every timer tick.
+// from each registered upsert to the TP on every timer tick
+//
+// q scaled-tick++/src/fh.q -p $FH_PORT -tpPort $TICK_PORT -fhDir $FH_ANALYTIC_DIR \
+//                    -fhTimer $FH_TIMER -procName FH
 
 system"l scaled-tick++/utils/main.q";
 

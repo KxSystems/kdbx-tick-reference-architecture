@@ -1,14 +1,14 @@
 // scaled-tick++/src/rte.q - Real-Time Engine (Enrichment Process)
 //
-// q scaled-tick++/src/rte.q -p $RTE_PORT -tpPort $TICK_PORT -enrichFile $RTE_ENRICH_FILE \
-//                     -procName RTE
-//
 // Loads an enrichment file which registers TP subscriptions and enrichment functions:
 //   • `.rte.subscriptions[tab]:syms`  — what to subscribe to on the TP
 //   • `.rte.enrichmentDict[func]:tab` — which functions transform incoming rows for `tab`
 //
 // Single instance, lives in the realtime module alongside the RDB.
 //   Flow: FH → TP → (.rte.subscriptions) → RTE → (.rte.enrichmentDict) → (.rte.pub) → TP → RDB
+//
+// q scaled-tick++/src/rte.q -p $RTE_PORT -tpPort $TICK_PORT -enrichFile $RTE_ENRICH_FILE \
+//                     -procName RTE
 
 system"l scaled-tick++/utils/main.q";
 

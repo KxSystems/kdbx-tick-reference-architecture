@@ -1,4 +1,4 @@
-// scaled-tick++/src/tick.q - Tickerplant Process (RDB leader/follower-aware)
+// scaled-tick++/src/tick.q - Tickerplant Process
 //
 // Globals used:
 //   .u.w                - dictionary of tables->(handle;syms)
@@ -10,12 +10,12 @@
 //   .u.d                - date
 //   .u.RDB_CONNECTIONS  - keyed table of (handle; procName; alive; leader) for tracked RDB / RDB_CHAIN
 //
-// q scaled-tick++/src/tick.q -p $TICK_PORT -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR -procName TP
-//
 // Loads every `.q` schema from $SCHEMA_DIR, opens (or rotates) the TP log under
 // $TPLOG_NAME/$TPLOG_DIR, accepts subscriptions from RDB / RDB_CHAIN / RTE / other clients,
 // fans publishes out, and rolls the day over via `.u.endofday` on midnight. Tracks each
 // subscribing RDB's role so that if the leader dies a follower can be promoted in place.
+//
+// q scaled-tick++/src/tick.q -p $TICK_PORT -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR -procName TP
 
 system"l scaled-tick++/utils/main.q";
 

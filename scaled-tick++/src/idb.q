@@ -1,14 +1,14 @@
 // scaled-tick++/src/idb.q - Intraday Database (single instance)
 //
-// q scaled-tick++/src/idb.q -p $IDB_PORT -hdbDir $HDB_DIR -idbDir $IDB_DIR -procName IDB
-//
 // Loads flushed int-partitions from <IDB_DIR>/today/<i>/<table>/ into memory and serves
 // queries on them. Whichever RDB currently holds the writedown role (`MAIN_FLAG=1b` — the
 // leader) owns the staging dir: it writes int-partitions there on every periodic flush and
 // calls `.idb.reload[]` over IPC after each flush. At EOD the leader merges the staging dir
 // into the HDB date partition and clears it; a subsequent reload yields an empty in-memory
 // view (the data is now in the HDB). There is exactly one IDB for the whole system — it is
-// not replicated with the chained RDBs.
+// not replicated with the chained RDBs
+//
+// q scaled-tick++/src/idb.q -p $IDB_PORT -hdbDir $HDB_DIR -idbDir $IDB_DIR -procName IDB
 
 system"l scaled-tick++/utils/main.q";
 
@@ -67,7 +67,19 @@ system"cd ",.idb.hdb;
 // Initial load on startup in case the leader has already flushed before the IDB came up.
 .idb.reload[];
 
-// @desc Evaluate incoming async messages — required for receiving `.idb.reload` signals
+// @desc Evaluate a GW-dispatched query and async-respond with the result
+// Called from the GW via (neg h)(`.gw.evalAndRespond; reqID; tier; query)
+// Errors are caught and returned as (`error`msg!``) so the callback path never crashes the DB
+//
+// @param reqID   {guid}      Request id originally assigned by the GW
+// @param tier    {symbol}    `rdb, `hdb, or `idb — caller's tier label
+// @param query   {*}         Query payload — string / parse-tree / projection
+.gw.evalAndRespond:{[reqID;tier;query]
+    res:@[value; query; {`error`msg!("Query failed";x)}];
+    (neg .z.w) (`.kxgw.callback; reqID; tier; res)
+    };
+
+// @desc Evaluate incoming async messages — required for `.idb.reload` signals and GW dispatches
 .z.ps:{value x};
 
 // One-minute housekeeping timer (used by `.timer.funcs`)

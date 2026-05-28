@@ -66,8 +66,10 @@ echo -e "  .env:             [$e_flag]"
 echo -e "  Secondaries:      [$s_flag]"
 echo -e "  Chained RDBs:     [$m_flag]"
 echo -e "  Flush interval:   [${FLUSH_INTV_MIN} min]"
+echo -e "  Req timeout:      [${REQ_TIMEOUT}]"
 echo -e "  RDB chain ports:  [${RDB_CHAIN_PORTS[*]}]"
 echo -e "  HDB extra ports:  [${HDB_EXTRA_PORTS[*]}]"
+echo -e "  REST_GWs:         [${REST_GW_COUNT}]  (shared port rp,${REST_PORT})"
 echo ""
 
 # ── Tickerplant ──────────────────────────────────────────────────────────
@@ -147,16 +149,31 @@ q scaled-tick++/src/rte.q \
   < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started RTE\t\t[$RTE_PORT]"
 
-# ── Gateway (q-IPC) ───────────────────────────────────────────────────────
+# ── Gateway (q-IPC, deferred sync) ────────────────────────────────────────
+# Pure q-IPC entry point; no REST in-process. REST_GW(s) below speak q-IPC here.
 q scaled-tick++/src/gw.q \
   -p $GW_PORT -s $s_flag \
   -rdbPort $RDB_PORT \
   -crdbPort ${RDB_CHAIN_PORTS[*]} \
   -idbPort $IDB_PORT \
   -hdbPort ${ALL_HDB_PORTS[*]} \
-  -analyticsDir $ANALYTIC_DIR \
+  -reqTimeout $REQ_TIMEOUT \
   -procName GW \
   < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started GW\t\t[$GW_PORT]"
+
+# ── REST_GW (HTTP front-end, sync IPC client of GW) ───────────────────────
+# Each instance shares $REST_PORT via SO_REUSEPORT (kdb `rp` mode); on Linux the
+# kernel load-balances incoming HTTP connections across them. On macOS BSD,
+# SO_REUSEPORT semantics differ — running >1 REST_GW is mostly demonstrative.
+for ((i=0; i<REST_GW_COUNT; i++)); do
+  q scaled-tick++/src/rest-gw.q \
+    -p rp,$REST_PORT -s $s_flag \
+    -gwPort $GW_PORT \
+    -analyticsDir $ANALYTIC_DIR \
+    -procName REST_GW_$i \
+    < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+  echo -e "  Started REST_GW_$i\t[rp,$REST_PORT]"
+done
 
 echo -e "\nStack started. Logs: $PROCESS_LOG_DIR/startup.log"

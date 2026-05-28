@@ -5,13 +5,14 @@
 #
 # Usage: ./scaled-tick++/scripts/restart.sh <procName> [-e envFile] [-s secondaries] [-m chainedRdbs]
 #
-# procName: TP | RDB | RDB_CHAIN_<N> | IDB | HDB | HDB_EXTRA_<N> | FH | RTE | GW
+# procName: TP | RDB | RDB_CHAIN_<N> | IDB | HDB | HDB_EXTRA_<N> | FH | RTE | GW | REST_GW_<N>
 #
 # Examples:
 #   ./scaled-tick++/scripts/restart.sh GW
 #   ./scaled-tick++/scripts/restart.sh RTE
 #   ./scaled-tick++/scripts/restart.sh RDB_CHAIN_0 -m 2
 #   ./scaled-tick++/scripts/restart.sh IDB
+#   ./scaled-tick++/scripts/restart.sh REST_GW_0
 #
 # NOTE: do not restart a failed leader as "RDB" — if a follower was already promoted you
 # would end up with two writedown leaders flushing into the same staging dir. Start a new
@@ -157,14 +158,24 @@ case "$proc_name" in
       -crdbPort ${RDB_CHAIN_PORTS[*]} \
       -idbPort $IDB_PORT \
       -hdbPort ${ALL_HDB_PORTS[*]} \
-      -analyticsDir $ANALYTIC_DIR \
+      -reqTimeout $REQ_TIMEOUT \
       -procName GW < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
     echo "  Started GW [$GW_PORT]"
     ;;
 
+  REST_GW_[0-9]*)
+    idx=${proc_name#REST_GW_}
+    kill_proc "$proc_name"
+    q scaled-tick++/src/rest-gw.q -p rp,$REST_PORT -s $s_flag \
+      -gwPort $GW_PORT \
+      -analyticsDir $ANALYTIC_DIR \
+      -procName REST_GW_$idx < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+    echo "  Started REST_GW_$idx [rp,$REST_PORT]"
+    ;;
+
   *)
     echo "Unknown procName: $proc_name"
-    echo "Valid: TP | RDB | RDB_CHAIN_<N> | IDB | HDB | HDB_EXTRA_<N> | FH | RTE | GW"
+    echo "Valid: TP | RDB | RDB_CHAIN_<N> | IDB | HDB | HDB_EXTRA_<N> | FH | RTE | GW | REST_GW_<N>"
     exit 1
     ;;
 esac
