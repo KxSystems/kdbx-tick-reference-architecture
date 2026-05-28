@@ -416,7 +416,7 @@ Logs the q command used to start the current process.
 
 ```q
 q) .log.procStarted["Tickerplant"];
-2026.05.06D09:07:36.465107038 info PID[71505] HOST[hostname] TP started using command: q kdb-x-platform/tick.q ...
+2026.05.06D09:07:36.465107038 info PID[71505] HOST[hostname] TP started using command: q scaled-tick++/tick.q ...
 ```
 
 ### .log.rollover
@@ -463,7 +463,7 @@ The default log level is `info`. It can be overridden per-process in two ways:
 | Method | Example | Scope |
 |--------|---------|-------|
 | Env var `LOG_LEVEL` in `.env` | `export LOG_LEVEL=debug` | All processes launched from that shell |
-| CLI arg `-logLevel` | `q kdb-x-platform/rte.q ... -logLevel debug ...` | One process (takes precedence over env) |
+| CLI arg `-logLevel` | `q scaled-tick++/rte.q ... -logLevel debug ...` | One process (takes precedence over env) |
 
 `samples/sample_env` includes `export LOG_LEVEL=info`; change it there to set a different default for the whole stack.
 
