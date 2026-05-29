@@ -501,8 +501,17 @@ app/
 │   │       ├── sym
 │   │       └── time
 │   └── sym
+├── idb/
+│   └── today/              # intraday staging (cleared at EOD)
+│       ├── 0/              # int-partition written by the RDB's first flush
+│       │   ├── energy/
+│       │   ├── weather/
+│       │   └── weatherHeatIndex/
+│       └── 1/              # ...subsequent flushes
+│           └── ...
 ├── proclogs/
 │   ├── GW_<datetime>.log
+│   ├── IDB_<datetime>.log
 │   ├── RDB_<datetime>.log
 │   └── ...
 └── tplogs/

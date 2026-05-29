@@ -34,6 +34,10 @@ kdbx-tick-reference-architecture/
 │   ├── idb/
 │   ├── proclogs/
 │   └── tplogs/
+├── arch/
+│   ├── scaled-tick++.drawio.png
+│   ├── tick++.drawio.png
+│   └── tick.drawio.png
 ├── samples/
 │   ├── analytics/
 │   ├── data/
@@ -102,7 +106,9 @@ kdbx-tick-reference-architecture/
     │   ├── fh.q
     │   ├── gw.q
     │   ├── hdb.q
+    │   ├── idb.q
     │   ├── rdb.q
+    │   ├── restgw.q
     │   ├── rte.q
     │   ├── tick.q
     │   └── u.q

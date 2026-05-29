@@ -511,10 +511,6 @@ scaled-tick++/
 │   ├── restart.sh
 │   ├── shutdown.sh
 │   └── startup.sh
-├── tests/
-│   ├── api-test.q
-│   ├── e2e-test.q
-│   └── rest-test.q
 ├── src/
 │   ├── client.q
 │   ├── fh.q
@@ -526,6 +522,10 @@ scaled-tick++/
 │   ├── rte.q
 │   ├── tick.q
 │   └── u.q
+├── tests/
+│   ├── api-test.q
+│   ├── e2e-test.q
+│   └── rest-test.q
 └── utils/
     ├── logging.q
     ├── main.q

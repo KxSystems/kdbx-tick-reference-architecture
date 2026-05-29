@@ -379,11 +379,7 @@ tick/
 │   ├── restart.sh
 │   ├── shutdown.sh
 │   └── startup.sh
-├── tests/
-│   ├── api-test.q
-│   ├── e2e-test.q
-│   └── rest-test.q
-├── tick/
+├── src/
 │   ├── client.q
 │   ├── fh.q
 │   ├── gw.q
@@ -392,6 +388,10 @@ tick/
 │   ├── rte.q
 │   ├── tick.q
 │   └── u.q
+├── tests/
+│   ├── api-test.q
+│   ├── e2e-test.q
+│   └── rest-test.q
 └── utils/
     ├── logging.q
     ├── main.q
