@@ -1,13 +1,13 @@
 // tick++/src/chainedrdb.q - Chained Realtime Database (Query Role)
 //
-// q tick++/src/chainedrdb.q -p $CHAINED_RDB_PORT -tpPort $TICK_PORT \
-//                          -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -procName CHAINED_RDB
-//
 // Subscribes to the Tickerplant in parallel with the main RDB and holds today's data
 // in memory. All RDB-tier queries from the gateway hit this process instead of the
 // main RDB, so the main RDB is free to perform intraday writedowns without contending
 // for the q event loop. Owns no disk I/O — `.u.end[date]` simply clears in-memory
 // tables (the main RDB is responsible for durability).
+//
+// q tick++/src/chainedrdb.q -p $CHAINED_RDB_PORT -tpPort $TICK_PORT \
+//                          -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -procName CHAINED_RDB
 
 if[not "w"=first string .z.o;system "sleep 1"];
 

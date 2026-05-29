@@ -1,12 +1,12 @@
 // tick/src/rdb.q - Realtime Database Process
 //
-// q tick/src/rdb.q -p $RDB_PORT -tpPort $TICK_PORT -hdbPort $HDB_PORT \
-//                   -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -procName RDB
-//
 // Subscribes to the Tickerplant (with exponential-backoff retry), holds today's
 // data in memory, and writes it down to the HDB partition on `.u.end[date]`.
 // If the TP is unreachable after all retries, schemas are loaded from $SCHEMA_DIR
 // so the process stays alive (empty tables) and reconnects on a 60s timer.
+//
+// q tick/src/rdb.q -p $RDB_PORT -tpPort $TICK_PORT -hdbPort $HDB_PORT \
+//                   -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -procName RDB
 
 if[not "w"=first string .z.o;system "sleep 1"];
 

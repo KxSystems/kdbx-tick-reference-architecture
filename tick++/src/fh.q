@@ -1,11 +1,11 @@
 // tick++/src/fh.q - Feedhandler Process
 //
-// q tick++/src/fh.q -p $FH_PORT -tpPort $TICK_PORT -fhTimer $FH_TIMER -procName FH
-//
 // Connects to the Tickerplant with exponential-backoff retry, then publishes a single
 // synthetic row to each of the `energy` and `weather` tables on every timer tick.
 // To extend, customise the body of `.timer.funcs[`fhUpsert]` below — read from your
 // own source, transform as needed, and call `neg[TP_H] (`.u.upd; <table>; <row data>)`.
+//
+// q tick++/src/fh.q -p $FH_PORT -tpPort $TICK_PORT -fhTimer $FH_TIMER -procName FH
 
 system"l tick++/utils/main.q";
 

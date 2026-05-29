@@ -1,12 +1,12 @@
 // tick++/src/idb.q - Intraday Database
 //
-// q tick++/src/idb.q -p $IDB_PORT -hdbDir $HDB_DIR -idbDir $IDB_DIR -procName IDB
-//
 // Loads flushed int-partitions from <IDB_DIR>/today/<i>/<table>/ into memory and serves
 // queries on them. The main RDB owns the staging dir — it writes int-partitions there on
 // every periodic flush and calls `.idb.reload[]` over IPC after each flush. At EOD the
 // staging dir is cleared by the main RDB; a subsequent reload yields an empty in-memory
 // view (the data is now in the HDB date partition).
+//
+// q tick++/src/idb.q -p $IDB_PORT -hdbDir $HDB_DIR -idbDir $IDB_DIR -procName IDB
 
 system"l tick++/utils/main.q";
 

@@ -1,9 +1,5 @@
 // tick++/src/rdb.q - Realtime Database (Writedown Role)
 //
-// q tick++/src/rdb.q -p $RDB_PORT -tpPort $TICK_PORT -hdbPort $HDB_PORT \
-//                    -idbPort $IDB_PORT -hdbDir $HDB_DIR -idbDir $IDB_DIR \
-//                    -tplogDir $TPLOG_DIR -flushIntvMin $FLUSH_INTV_MIN -procName RDB
-//
 // In tick++/, the main RDB is dedicated to writedown. It subscribes to the TP, holds
 // today's data in memory just long enough to flush periodically to disk, and at EOD
 // merges those int-partitions into the HDB date partition. Query serving is offloaded
@@ -19,6 +15,10 @@
 //   1. flush remaining in-memory rows as the final int-partition
 //   2. merge all int-partitions under <IDB_DIR>/today/ into <HDB_DIR>/<date>/
 //   3. clean up the staging dir, signal HDB + IDB to reload, reset counters
+//
+// q tick++/src/rdb.q -p $RDB_PORT -tpPort $TICK_PORT -hdbPort $HDB_PORT \
+//                    -idbPort $IDB_PORT -hdbDir $HDB_DIR -idbDir $IDB_DIR \
+//                    -tplogDir $TPLOG_DIR -flushIntvMin $FLUSH_INTV_MIN -procName RDB
 
 if[not "w"=first string .z.o;system "sleep 1"];
 

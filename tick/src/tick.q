@@ -9,11 +9,11 @@
 //   .u.l - handle to tp log file
 //   .u.d - date
 //
-// q tick/src/tick.q -p $TICK_PORT -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR -procName TP
-//
 // Loads every `.q` schema from $SCHEMA_DIR, opens (or rotates) the TP log under
 // $TPLOG_NAME/$TPLOG_DIR, accepts subscriptions from RDB / RTE / other clients,
 // fans publishes out, and rolls the day over via `.u.endofday` on midnight.
+//
+// q tick/src/tick.q -p $TICK_PORT -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR -procName TP
 
 system"l tick/utils/main.q";
 

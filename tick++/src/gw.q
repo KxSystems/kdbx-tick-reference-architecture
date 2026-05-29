@@ -1,8 +1,5 @@
 // tick++/src/gw.q - Gateway Process (q-IPC + REST)
 //
-// q tick++/src/gw.q -p $GW_PORT -rdbPort $CHAINED_RDB_PORT -idbPort $IDB_PORT \
-//                   -hdbPort $HDB_PORT -analyticsDir $ANALYTIC_DIR -procName GW
-//
 // Routes queries from q-IPC and REST clients across three tiers:
 //   • `rdb`  — chained RDB (most recent in-memory data, not yet flushed)
 //   • `idb`  — intraday DB (today's flushed int-partitions, in memory from disk)
@@ -14,6 +11,9 @@
 //
 // Analytics files under `-analyticsDir` define REST endpoints whose handlers call
 // `.restgw.query` (aliased to `.kxgw.query`) to issue queries through the gateway.
+//
+// q tick++/src/gw.q -p $GW_PORT -rdbPort $CHAINED_RDB_PORT -idbPort $IDB_PORT \
+//                   -hdbPort $HDB_PORT -analyticsDir $ANALYTIC_DIR -procName GW
 
 system"l tick++/utils/main.q";
 

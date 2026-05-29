@@ -1,10 +1,10 @@
 // tick/src/hdb.q - Historical Database Process
 //
-// q tick/src/hdb.q -p $HDB_PORT -hdbDir $HDB_DIR -procName HDB
-//
 // Loads the on-disk partitioned database from `-hdbDir` and serves queries from the gateway.
 // Exposes `.hdb.reload[]` so external tooling (e.g. scripts/reload-hdb.sh after a batch load)
 // can refresh the in-memory view of disk without restarting the process.
+//
+// q tick/src/hdb.q -p $HDB_PORT -hdbDir $HDB_DIR -procName HDB
 
 // Load utility scripts
 system"l tick/utils/main.q";
