@@ -1,6 +1,6 @@
 # Tick Reference Architecture
 
-A template for KDB-X base tick architecture.
+A template for base KDB-X tick architecture.
 
 ## Description
 
@@ -13,11 +13,9 @@ The architecture contained within this repository consists of the following q pr
 - **Real-Time Engine (RTE)** — subscribes to the tickerplant, runs enrichment functions, and publishes derived tables back to the tickerplant
 - **Gateway (GW)** — routes queries to the RDB and/or HDB and serves REST endpoints for the analytics defined in `ANALYTIC_DIR`
 
-In the documentation below it explains where to take schemas, sample data, and analytics from and how to change them. It also explains how to customise the architecture based on your use case, for example how to deploy more than one RDB/HDB.
-
 ### Architecture Diagram
 
-![kdb-x arch](../arch/kdb-x-architecture.png)
+![tick architecture](../arch/tick.drawio.png)
 
 ## Usage
 
@@ -31,40 +29,26 @@ The following KDB-X modules are required for full deployment of the system as th
 
 ### Configuration
 
-The following configuration steps are required before being able to run the tick processes:
+Base tick is designed to run out-of-the-box with no per-deployment setup. All configuration is hardcoded in the scripts under `tick/scripts/`. `tick/scripts/startup.sh` auto-creates the runtime directories on first run.
 
-- Create a `.env` file within the repo with the following variables defined. An example can be found under `samples/sample_env`.
+The defaults listed below are baked into the `Configuration` block at the top of `tick/scripts/startup.sh`:
 
-  | Variable                  | Example Value                                     | Description                                                                                                              |
-  | ------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-  | SCHEMA_DIR                | /path/to/repo/samples/schemas                     | Directory containing one or more `.q` files with table schemas used by the system.                                       |
-  | SAMPLE_DATA               | /path/to/repo/samples/data                        | Directory containing the raw data files ingested by the feedhandler.                                                     |
-  | TPLOG_DIR                 | /path/to/repo/app/tplogs                          | Directory to store tickerplant log files.                                                                                |
-  | TPLOG_NAME                | tpLog                                             | Prefix for the tickerplant log file name.                                                                                |
-  | HDB_DIR                   | /path/to/repo/app/hdb                             | Directory to store on-disk partitioned HDB data.                                                                         |
-  | PROCESS_LOG_DIR           | /path/to/repo/app/proclogs                        | Directory to store per-process log files.                                                                                |
-  | TICK_PORT                 | 5010                                              | Port for the tickerplant process.                                                                                        |
-  | RDB_PORT                  | 5011                                              | Port for the realtime database process.                                                                                  |
-  | HDB_PORT                  | 5012                                              | Port for the historical database process.                                                                                |
-  | GW_PORT                   | 5013                                              | Port for the gateway process (q-IPC and REST).                                                                           |
-  | FH_PORT                   | 5014                                              | Port for the feedhandler process.                                                                                        |
-  | RTE_PORT                  | 5016                                              | Port for the real-time engine process.                                                                                   |
-  | FH_TIMER                  | 60000                                             | Feedhandler publish interval in milliseconds.                                                                            |
-  | FH_ANALYTIC_DIR           | /path/to/repo/samples/data/fh-analytics           | Directory containing feedhandler parser `.q` files.                                                                      |
-  | ANALYTIC_DIR              | /path/to/repo/samples/analytics                   | Directory containing REST endpoint analytics `.q` files loaded by the gateway.                                           |
-  | RTE_ENRICH_FILE           | /path/to/repo/samples/enrichments/enrich-sample.q | Path to the enrichment file loaded by the real-time engine.                                                              |
-
-- Create a `.q` file in `SCHEMA_DIR` containing schemas of tables to be used by the system. Multiple schema files can be used.
-- Create the `app/tplogs`, `app/hdb`, and `app/proclogs` directories.
-- Ensure scripts under `scripts/` are executable.
-
-#### Directory creation
-
-```bash
-cp samples/sample_env .env && \
-source .env && \
-mkdir -p $TPLOG_DIR $HDB_DIR $PROCESS_LOG_DIR
-```
+  | Variable        | Default Value                              | Description                                                                          |
+  | --------------- | ------------------------------------------ | ------------------------------------------------------------------------------------ |
+  | SCHEMA_DIR      | samples/schemas                            | Directory containing one or more `.q` files with table schemas used by the system.   |
+  | TPLOG_DIR       | app/tplogs                                 | Directory to store tickerplant log files (auto-created).                             |
+  | TPLOG_NAME      | tpLog                                      | Prefix for the tickerplant log file name.                                            |
+  | HDB_DIR         | app/hdb                                    | Directory to store on-disk partitioned HDB data (auto-created).                      |
+  | PROCESS_LOG_DIR | app/proclogs                               | Directory to store per-process log files (auto-created).                             |
+  | LOG_LEVEL       | info                                       | Default log level. Accepted: `trace`, `debug`, `info`, `warn`, `error`, `fatal`.     |
+  | TICK_PORT       | 5010                                       | Port for the tickerplant process.                                                    |
+  | RDB_PORT        | 5011                                       | Port for the realtime database process.                                              |
+  | HDB_PORT        | 5012                                       | Port for the historical database process.                                            |
+  | GW_PORT         | 5013                                       | Port for the gateway process (q-IPC and REST).                                       |
+  | FH_PORT         | 5014                                       | Port for the feedhandler process.                                                    |
+  | RTE_PORT        | 5016                                       | Port for the real-time engine process.                                               |
+  | FH_TIMER        | 60000                                      | Feedhandler publish interval in milliseconds.                                        |
+  | ANALYTIC_DIR    | samples/analytics                          | Directory containing REST endpoint analytics `.q` files loaded by the gateway.       |
 
 ### Start
 
@@ -73,7 +57,6 @@ To run the system, execute the startup script from the project root:
 ```bash
 $ ./tick/scripts/startup.sh
 Starting Tick Reference Architecture...
-  .env:             [.env]
   Secondaries:      [0]
 
   Started TP        [5010]
@@ -84,12 +67,6 @@ Starting Tick Reference Architecture...
   Started GW        [5013]
 
 Stack started. Logs: app/proclogs/startup.log
-```
-
-This assumes `.env` is in the project root. For a file stored elsewhere use the `-e` flag:
-
-```bash
-$ ./tick/scripts/startup.sh -e /path/to/.env
 ```
 
 <details>
@@ -126,27 +103,22 @@ Killing processes:
 
 ### Data Ingestion
 
-Within the feedhandler, custom parsers are loaded dynamically from the `fh-analytics` directory and executed via the `.fh.upsert` namespace. Each upsert function runs structured data parsing, schema normalisation, and TP publishing.
+The feedhandler publishes one synthetic row each to the `energy` and `weather` tables on every timer tick. The publishing logic is a pair of direct ``neg[TP_H] (`.u.upd; <table>; <row data>)`` calls inside ``.timer.funcs[`fhUpsert]`` in `tick/src/fh.q` — there is no parser dispatcher or analytics directory to load from. Customise by replacing the row construction with your own data source / transformation.
 
-Live data publishing is driven by the timer interval and initialised automatically when the system starts. The interval can also be overridden at runtime using the `scripts/fh-timer.sh` script.
-
-<details>
-<summary>Example .fh.upsert Function Format</summary>
-
-```q
-.fh.upsert.funcName:{[]
-    // custom logic to publish to TP
-    neg[TP]("u.upd"; tabName; records);
-}
-```
-
-`.fh.upsert` functions must take no arguments and publish to the TP. Parsing and normalisation are handled by separate custom functions stored within the `fh-analytics` directory.
-
-</details>
+The interval is set by `FH_TIMER` and can be overridden at runtime using the `scripts/fh-timer.sh` script.
 
 ### Real-Time Enrichment
 
-The RTE subscribes to tickerplant tables, runs user-defined enrichment functions, and publishes the results as new derived tables back to the tickerplant (so they also appear in the RDB). Enrichment functions are registered at startup from the file set by `RTE_ENRICH_FILE`.
+The RTE process starts with **no enrichments registered**. It exposes a small registration API so users can plug in their own:
+
+- ``.rte.addEnrichment[`func; `sourceTable]`` — register a global function `func` to run when `sourceTable` publishes.
+- ``.rte.addSubscription[`sourceTable; `]`` — subscribe RTE to `sourceTable` on the TP (use `` ` `` for all syms).
+- ``.rte.pub[`derivedTable; rows]`` — call from inside your enrichment function to publish derived rows back to the TP.
+
+Two ways to insert custom enrichment:
+
+1. **At startup via `-enrichFile`** — write a `.q` file that defines + registers your enrichment (see the example below), then add `-enrichFile path/to/your-file.q` to the `rte.q` launch in `tick/scripts/startup.sh`.
+2. **At runtime via IPC** — open a handle to RTE and call the registration helpers directly ``h(`.rte.addEnrichment; `myEnrich; `weather)``.
 
 <details>
 <summary>Example Enrichment File</summary>
@@ -165,17 +137,9 @@ myEnrichment:{[data]
 
 </details>
 
-### Monitoring
+### Restart Individual Processes
 
-All processes write structured logs to `PROCESS_LOG_DIR` in the format `<procName>_<datetime>.log`. The `scripts/monitor.sh` watchdog script checks whether each process is alive and restarts any that have died.
-
-```bash
-# Check and restart any dead processes
-$ ./tick/scripts/monitor.sh
-
-# Run as a cron job every minute
-* * * * * cd /path/to/kdbx-tick-reference-architecture && ./tick/scripts/monitor.sh -e .env >> app/proclogs/monitor-cron.log 2>&1
-```
+All processes write structured logs to `PROCESS_LOG_DIR` in the format `<procName>_<datetime>.log`.
 
 To restart a single named process without taking down the whole stack:
 
@@ -199,7 +163,7 @@ The gateway connects to the RDB and HDB on startup. If a process is restarted wh
 The gateway exposes `.kxgw.query[target; query]` for synchronous queries from q clients:
 
 ```q
-gwh: hopen `$"::",string GW_PORT
+gwh: hopen 5013
 
 // Query the RDB
 gwh (`.kxgw.query; `rdb; "select from energy")
@@ -305,7 +269,7 @@ Use `.restgw.query` within analytics handlers — it is aliased to `.kxgw.query`
 
 ### Usage
 
-Logging is enabled on all processes by loading `utils/logging.q` (via `utils/main.q`). This initialises the `kx.log` module and redirects output to a per-process log file.
+Logging is enabled on all processes by loading `utils/logging.q` (via `utils/main.q`). This initializes the `kx.log` module and redirects output to a per-process log file.
 
 Default usage documentation can be found at https://github.com/KxSystems/logging/blob/main/docs/reference.md
 
@@ -318,7 +282,7 @@ Logs the q command used to start the current process.
 
 ```q
 q) .log.procStarted["Tickerplant"];
-2026.05.06D09:07:36.465107038 info PID[71505] HOST[hostname] TP started using command: q tick/tick/tick.q ...
+2026.05.06D09:07:36.465107038 info PID[71505] HOST[hostname] TP started using command: q tick/src/tick.q ...
 ```
 
 ### .log.rollover
@@ -333,7 +297,7 @@ q) .log.rollover["TP"; .z.d+1];
 
 ### Default Behaviour
 
-- Process logs are saved to `PROCESS_LOG_DIR` in the `.env` file.
+- Process logs are saved to `PROCESS_LOG_DIR` (default `app/proclogs/`).
 - Log file names follow the format `<procName>_<datetime>.log`.
 - A `startup.log` file is created by `scripts/startup.sh`.
 - All log levels (trace, debug, info, warn, error, fatal) are written to the process log file.
@@ -356,34 +320,18 @@ startup.log
 
 ### Log level
 
-The default log level is `info`. It can be overridden per-process in two ways:
+The default log level is `info` (set in the `Configuration` block of `tick/scripts/startup.sh` as `LOG_LEVEL`, which is exported so q reads it via `getenv`). It can be overridden per-process in two ways:
 
 | Method | Example | Scope |
 |--------|---------|-------|
-| Env var `LOG_LEVEL` in `.env` | `export LOG_LEVEL=debug` | All processes launched from that shell |
-| CLI arg `-logLevel` | `q tick/tick/rte.q ... -logLevel debug ...` | One process (takes precedence over env) |
-
-`samples/sample_env` includes `export LOG_LEVEL=info`; change it there to set a different default for the whole stack.
+| Edit `LOG_LEVEL` in `tick/scripts/startup.sh` | `LOG_LEVEL="debug"` | All processes launched by the script |
+| CLI arg `-logLevel` | `q tick/src/rte.q ... -logLevel debug ...` | One process (takes precedence over env) |
 
 Accepted values: `trace`, `debug`, `info`, `warn`, `error`, `fatal`. Anything else logs a `warn` on startup and the level stays at `info`. When the effective level is not `info`, the process logs `Log level set to [<level>]` as its first info line.
 
-### Log Rotation
-
-The `utils/rotate-logs.sh` script deletes old process log and tickerplant log files to prevent unbounded disk usage. It reads `PROCESS_LOG_DIR` and `TPLOG_DIR` from the `.env` file and accepts optional flags to control retention period.
-
-```bash
-# Delete proclogs and tplogs older than 7 days (default)
-$ ./tick/utils/rotate-logs.sh
-
-# Keep only 3 days of proclogs, 14 days of tplogs
-$ ./tick/utils/rotate-logs.sh --keep-days 3 --tp-keep-days 14
-```
-
-The script preserves `startup.log` regardless of age.
-
 ## Timers
 
-Additional logic allows multiple separately-defined functions to be called on a single timer (`.z.ts`) per process. Functions are added to the `.timer.funcs` dictionary, initialised by `utils/timer.q`.
+Additional logic allows multiple separately-defined functions to be called on a single timer (`.z.ts`) per process. Functions are added to the `.timer.funcs` dictionary, initialized by `utils/timer.q`.
 
 <details>
 <summary>Example Timer Function</summary>
@@ -411,7 +359,7 @@ stop_fh_timer    # pause ingest
 An end-to-end test suite is provided at `tests/e2e-test.q`. It covers data ingestion, q-IPC and REST queries, EOD, and operational scripts. Run it from the project root after starting the stack:
 
 ```bash
-source .env && q tick/tests/e2e-test.q -gwPort $GW_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
+q tick/tests/e2e-test.q -gwPort 5013 -tpPort 5010 -fhPort 5014 -procName e2e
 ```
 
 Results are written to `app/proclogs/e2e_<datetime>.log` in the same structured format as all other process logs.
@@ -424,69 +372,30 @@ Results are written to `app/proclogs/e2e_<datetime>.log` in the same structured 
 <summary>Initial Directory Tree</summary>
 
 ```
-kdbx-tick-reference-architecture/
-├── app/
-│   ├── hdb/
-│   ├── proclogs/
-│   └── tplogs/
-├── samples/
-│   ├── analytics/
-│   ├── data/
-│   ├── enrichments/
-│   ├── schemas/
-│   └── sample_env
-├── tick/
-│   ├── README.md
-│   ├── scripts/
-│   │   ├── fh-timer.sh
-│   │   ├── monitor.sh
-│   │   ├── restart.sh
-│   │   ├── shutdown.sh
-│   │   └── startup.sh
-│   ├── tests/
-│   │   ├── api-test.q
-│   │   ├── e2e-test.q
-│   │   └── rest-test.q
-│   ├── tick/
-│   │   ├── client.q
-│   │   ├── fh.q
-│   │   ├── gw.q
-│   │   ├── hdb.q
-│   │   ├── rdb.q
-│   │   ├── rte.q
-│   │   ├── tick.q
-│   │   └── u.q
-│   └── utils/
-│       ├── logging.q
-│       ├── main.q
-│       ├── rotate-logs.sh
-│       └── timer.q
-└── tick++/
-    ├── README.md
-    ├── scripts/
-    │   ├── fh-timer.sh
-    │   ├── monitor.sh
-    │   ├── restart.sh
-    │   ├── shutdown.sh
-    │   └── startup.sh
-    ├── tests/
-    │   ├── api-test.q
-    │   ├── e2e-test.q
-    │   └── rest-test.q
-    ├── tick/
-    │   ├── client.q
-    │   ├── fh.q
-    │   ├── gw.q
-    │   ├── hdb.q
-    │   ├── rdb.q
-    │   ├── rte.q
-    │   ├── tick.q
-    │   └── u.q
-    └── utils/
-        ├── logging.q
-        ├── main.q
-        ├── rotate-logs.sh
-        └── timer.q
+tick/
+├── README.md
+├── scripts/
+│   ├── fh-timer.sh
+│   ├── restart.sh
+│   ├── shutdown.sh
+│   └── startup.sh
+├── src/
+│   ├── client.q
+│   ├── fh.q
+│   ├── gw.q
+│   ├── hdb.q
+│   ├── rdb.q
+│   ├── rte.q
+│   ├── tick.q
+│   └── u.q
+├── tests/
+│   ├── api-test.q
+│   ├── e2e-test.q
+│   └── rest-test.q
+└── utils/
+    ├── logging.q
+    ├── main.q
+    └── timer.q
 ```
 
 </details>

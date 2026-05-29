@@ -1,11 +1,11 @@
-// Initialise log library
+// initialize log library
 .logger:use`kx.log;
 .log:.logger.createLog[];
 
 // Add custom logic
 .log.fileHandle:()!();
 
-// Initialise the log file
+// initialize the log file
 //  - proc == string to prepend to log file name
 //      .e.g "Tickerplant"
 //  - dt == datetime to append to log file name

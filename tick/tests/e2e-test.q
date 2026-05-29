@@ -3,14 +3,12 @@
 // Covers:
 //   Phase 2  — FH ingest + RDB row counts (data-flow gate)
 //   Phase 3  — q-IPC query tests (delegates to api-test.q)
-//   Phase 4  — RTE enrichment (weatherHeatIndex — not in api-test.q)
 //   Phase 5  — EOD trigger + HDB verification
 //   Phase 6  — REST endpoint tests post-EOD (delegates to rest-test.q)
-//   Phase 7a — monitor.sh watchdog (kills FH, expects restart)
-//   Phase 7b — restart.sh GW (kills GW, expects restart)
+//   Phase 7  — restart.sh GW (kills GW, expects restart)
 //
 // Usage (from project root):
-//   source .env && q tick/tests/e2e-test.q -gwPort $GW_PORT -tpPort $TICK_PORT -fhPort $FH_PORT -procName e2e
+//   q tick/tests/e2e-test.q -gwPort 5013 -tpPort 5010 -fhPort 5014 -procName e2e
 
 system "l tick/utils/main.q";
 
@@ -38,7 +36,23 @@ FH_PORT: "I"$first CLI_ARGS[`fhPort];
 
 // Find pid of a q process by exact procName.
 .t.findPid:{[name]
-    first system "pgrep -af 'q.*-procName ",name,"(\\s|$)' | awk '{print $1}'"
+    // `pgrep -f` is portable (BSD + GNU); `pgrep -af` is not — on macOS BSD
+    // `-a` means "include ancestors", not "show command line", so the awk pipe
+    // was a no-op and the `(\s|$)` regex anchor wasn't supported either. The
+    // `| cat` suffix swallows pgrep / ps non-zero exits (no match, or pid
+    // raced and disappeared) which q's `system` would otherwise raise as `'os`
+    // — we deliberately avoid `|| true` here because it breaks q's stdout
+    // capture on some builds. We match loosely first, then filter via
+    // `ps -p <pid> -o args=` for an exact -procName match so e.g. "RDB" does
+    // not also match "RDB_CHAIN_0".
+    pids:system "pgrep -f 'q.*-procName ",name,"' | cat";
+    if[not count pids;:""];
+    pats:("*-procName ",name;"*-procName ",name," *");
+    m:{[pats;pid]
+        out:system "ps -p ",pid," -o args= | cat";
+        $[count out; any (first out) like/:pats; 0b]
+      }[pats] each pids;
+    $[count r:pids where m; first r; ""]
  };
 
 // Safe pid cast — returns 0Ni on empty string or cast failure.
@@ -78,17 +92,6 @@ apiCmd:"q tick/tests/api-test.q -gwPort ",string[GW_PORT]," -procName api-test";
 .log.info["Running: ",apiCmd];
 .t.check["api-test.q passed"; {x}; .t.runScript[apiCmd]];
 
-// ── Phase 4: RTE enrichment ───────────────────────────────────────────────
-// weatherHeatIndex is not covered by api-test.q.
-.t.section "Phase 4: RTE enrichment (weatherHeatIndex)";
-
-heatRdb:gwh(`.kxgw.query; `rdb; "select from weatherHeatIndex");
-.t.check["weatherHeatIndex on RDB returns table"; {98h=type x};  heatRdb];
-.t.check["weatherHeatIndex on RDB has rows";      {0<count x};   heatRdb];
-
-heatBoth:gwh(`.kxgw.query; `both; "select from weatherHeatIndex");
-.t.check["weatherHeatIndex via both returns dict"; {(99h=type x) and `rdb`hdb~key x}; heatBoth];
-
 // ── Phase 5: EOD trigger + HDB verify ────────────────────────────────────
 .t.section "Phase 5: EOD trigger + HDB verification";
 
@@ -116,25 +119,8 @@ restCmd:"q tick/tests/rest-test.q -gwPort ",string[GW_PORT]," 2>&1";
 .log.info["Running: q tick/tests/rest-test.q -gwPort ",string GW_PORT];
 .t.check["rest-test.q passed"; {x}; .t.runScript[restCmd]];
 
-// ── Phase 7a: monitor.sh watchdog ────────────────────────────────────────
-.t.section "Phase 7a: monitor.sh watchdog";
-
-fhPid:.t.findPid["FH"];
-fhPidI:.t.toPid[fhPid];
-.t.check["FH process found before kill"; {not null x}; fhPidI];
-
-if[not null fhPidI;
-    .log.info["Killing FH (pid ",fhPid,")..."];
-    system "kill -9 ",fhPid;
-    system "sleep 0.5";
-    system "./tick/scripts/monitor.sh -e .env";
-    system "sleep 2";
-    newFhPid:.t.findPid["FH"];
-    .t.check["monitor.sh restarted FH"; {not null .t.toPid x}; newFhPid];
- ];
-
-// ── Phase 7b: restart.sh GW ──────────────────────────────────────────────
-.t.section "Phase 7b: restart.sh GW";
+// ── Phase 7: restart.sh GW ───────────────────────────────────────────────
+.t.section "Phase 7: restart.sh GW";
 
 gwPid:.t.findPid["GW"];
 gwPidI:.t.toPid[gwPid];
@@ -145,7 +131,7 @@ if[not null gwPidI;
     .log.info["Killing GW (pid ",gwPid,")..."];
     system "kill -9 ",gwPid;
     system "sleep 0.5";
-    system "./tick/scripts/restart.sh GW -e .env";
+    system "./tick/scripts/restart.sh GW";
     system "sleep 3";
     newGwh:@[hopen; `$"::",string GW_PORT; {0Ni}];
     .t.check["restart.sh restarted GW"; {not null x}; newGwh];

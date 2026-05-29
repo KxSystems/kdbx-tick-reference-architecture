@@ -1,129 +1,163 @@
 #!/bin/bash
 
-# Start all processes for the Tick Reference Architecture.
+# Start all processes for Tick++ Architecture (intraday writedown via main RDB + chained RDB + IDB)
 # Run from the project root directory.
 #
-# Usage: ./tick++/scripts/startup.sh [-e envFile] [-s secondaries] [-m chainedRdbs]
-#   -e  Path to .env file (default: .env)
+# Usage: ./tick++/scripts/startup.sh [-s secondaries]
 #   -s  Secondary threads per process (default: 0)
-#   -m  Number of chained RDB replicas for failover (default: 0)
-#       Each replica is paired with a dedicated HDB instance.
+#
+# All configuration is hardcoded below
+# To customize, edit the constants block directly
 
-e_flag=".env"
+#################
+# Configuration #
+#################
+# Runtime directories (created automatically below if missing)
+TPLOG_DIR="app/tplogs"
+HDB_DIR="app/hdb"
+IDB_DIR="app/idb"
+PROCESS_LOG_DIR="app/proclogs"
+
+# Schema, analytics inputs
+SCHEMA_DIR="samples/schemas"
+ANALYTIC_DIR="samples/analytics"
+
+# Tickerplant log file prefix
+TPLOG_NAME="tpLog"
+
+# Logging
+LOG_LEVEL="info"
+
+# Process ports
+TICK_PORT=5010
+RDB_PORT=5011          # main RDB (writedown role)
+HDB_PORT=5012
+GW_PORT=5013
+FH_PORT=5014
+IDB_PORT=5015
+RTE_PORT=5016
+CHAINED_RDB_PORT=5017    # chained RDB (query role)
+
+# Feedhandler timer interval (milliseconds)
+FH_TIMER=60000
+
+# Main RDB intraday flush interval (minutes) — drives both .rdb.flush cadence
+# and the IDB reload signal frequency
+FLUSH_INTV_MIN=5
+
+# Export values read by q processes via getenv
+export SCHEMA_DIR TPLOG_NAME LOG_LEVEL PROCESS_LOG_DIR
+
+###############
+# CLI-parsing #
+###############
 s_flag=0
-m_flag=0
 
 print_usage() {
-  printf "Usage: ./tick++/scripts/startup.sh [-e envFile] [-s secondaries] [-m chainedRdbs]\n"
-  printf "  -e  Path to .env file (default: .env)\n"
+  printf "Usage: ./tick++/scripts/startup.sh [-s secondaries]\n"
   printf "  -s  Secondary threads per process (default: 0)\n"
-  printf "  -m  Number of chained RDB replicas for failover (default: 0)\n"
 }
 
-while getopts 'e:s:m:' flag; do
+while getopts 's:' flag; do
   case "${flag}" in
-    e) e_flag="${OPTARG}" ;;
     s) s_flag="${OPTARG}" ;;
-    m) m_flag="${OPTARG}" ;;
     *) print_usage; exit 1 ;;
   esac
 done
 
-if [ ! -f "$e_flag" ]; then
-  echo "Env file not found: $e_flag"
-  exit 1
-fi
-source "$e_flag"
+# Auto-create runtime directories so the q redirections below don't fail
+mkdir -p "$TPLOG_DIR" "$HDB_DIR" "$IDB_DIR" "$PROCESS_LOG_DIR"
 
-# Port allocation for chained RDB/HDB pairs.
-# Paired scheme: PARALLEL_PORT_RANGE_START + 2*i (RDB_CHAIN_i), +2*i+1 (HDB_EXTRA_i)
-RDB_CHAIN_PORTS=()
-HDB_EXTRA_PORTS=()
-for ((i=0; i<m_flag; i++)); do
-  RDB_CHAIN_PORTS+=( $(( PARALLEL_PORT_RANGE_START + 2*i )) )
-  HDB_EXTRA_PORTS+=( $(( PARALLEL_PORT_RANGE_START + 2*i + 1 )) )
-done
-
-ALL_HDB_PORTS=($HDB_PORT ${HDB_EXTRA_PORTS[*]})
-
-echo -e "Starting Tick Reference Architecture..."
-echo -e "  .env:             [$e_flag]"
+echo -e "Starting Tick++ Reference Architecture..."
 echo -e "  Secondaries:      [$s_flag]"
-echo -e "  Chained RDBs:     [$m_flag]"
-[ $m_flag -gt 0 ] && echo -e "  RDB chain ports:  [${RDB_CHAIN_PORTS[*]}]"
-[ $m_flag -gt 0 ] && echo -e "  HDB extra ports:  [${HDB_EXTRA_PORTS[*]}]"
+echo -e "  Flush interval:   [${FLUSH_INTV_MIN} min]"
 echo ""
 
-# ── Tickerplant ──────────────────────────────────────────────────────────
-q tick++/tick/tick.q \
+###############
+# Tickerplant #
+###############
+q tick++/src/tick.q \
   -p $TICK_PORT -s $s_flag \
   -schemaDir $SCHEMA_DIR -tplogDir $TPLOG_DIR \
   -procName TP \
   < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started TP\t\t[$TICK_PORT]"
 
-# ── RDB (realtime leader) ────────────────────────────────────────────────
-q tick++/tick/rdb.q \
+#######
+# IDB #
+#######
+# Start IDB before the main RDB so that the first flush signal lands on a live IDB.
+q tick++/src/idb.q \
+  -p $IDB_PORT -s $s_flag \
+  -hdbDir $HDB_DIR -idbDir $IDB_DIR \
+  -procName IDB \
+  < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+echo -e "  Started IDB\t\t[$IDB_PORT]"
+
+##############################
+# RDB (writedown role)       #
+##############################
+q tick++/src/rdb.q \
   -p $RDB_PORT -s $s_flag \
-  -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
-  -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
+  -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR -idbDir $IDB_DIR \
+  -tpPort $TICK_PORT -hdbPort $HDB_PORT -idbPort $IDB_PORT \
+  -flushIntvMin $FLUSH_INTV_MIN \
   -procName RDB \
   < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started RDB\t\t[$RDB_PORT]"
 
-# ── Chained RDB replicas (failover followers) ────────────────────────────
-for ((i=0; i<m_flag; i++)); do
-  q tick++/tick/rdb.q \
-    -p ${RDB_CHAIN_PORTS[$i]} -s $s_flag \
-    -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
-    -tpPort $TICK_PORT -hdbPort ${ALL_HDB_PORTS[*]} \
-    -procName RDB_CHAIN_$i \
-    < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
-  echo -e "  Started RDB_CHAIN_$i\t[${RDB_CHAIN_PORTS[$i]}]"
-done
+##############################
+# CHAINED_RDB (query role)     #
+##############################
+q tick++/src/chainedrdb.q \
+  -p $CHAINED_RDB_PORT -s $s_flag \
+  -tplogDir $TPLOG_DIR -hdbDir $HDB_DIR \
+  -tpPort $TICK_PORT \
+  -procName CHAINED_RDB \
+  < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
+echo -e "  Started CHAINED_RDB\t[$CHAINED_RDB_PORT]"
 
-# ── HDB (base) ────────────────────────────────────────────────────────────
-q tick++/tick/hdb.q \
+#######
+# HDB #
+#######
+q tick++/src/hdb.q \
   -p $HDB_PORT -s $s_flag \
   -hdbDir $HDB_DIR \
   -procName HDB \
   < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started HDB\t\t[$HDB_PORT]"
 
-# ── Extra HDBs (paired with chained RDB replicas) ────────────────────────
-for ((i=0; i<m_flag; i++)); do
-  q tick++/tick/hdb.q \
-    -p ${HDB_EXTRA_PORTS[$i]} -s $s_flag \
-    -hdbDir $HDB_DIR \
-    -procName HDB_EXTRA_$i \
-    < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
-  echo -e "  Started HDB_EXTRA_$i\t[${HDB_EXTRA_PORTS[$i]}]"
-done
-
-# ── Feedhandler ───────────────────────────────────────────────────────────
-q tick++/tick/fh.q \
+###############
+# Feedhandler #
+###############
+q tick++/src/fh.q \
   -p $FH_PORT -s $s_flag \
-  -fhDir $FH_ANALYTIC_DIR -fhTimer $FH_TIMER \
+  -fhTimer $FH_TIMER \
   -tpPort $TICK_PORT \
   -procName FH \
   < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started FH\t\t[$FH_PORT]"
 
-# ── Real-Time Engine ──────────────────────────────────────────────────────
-q tick++/tick/rte.q \
+####################
+# Real-time Engine #
+####################
+q tick++/src/rte.q \
   -p $RTE_PORT -s $s_flag \
-  -enrichFile $RTE_ENRICH_FILE \
   -tpPort $TICK_PORT \
   -procName RTE \
   < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
 echo -e "  Started RTE\t\t[$RTE_PORT]"
 
-# ── Gateway (q-IPC) ───────────────────────────────────────────────────────
-q tick++/tick/gw.q \
+###########
+# Gateway #
+###########
+# GW connects to CHAINED_RDB (not main RDB) for the `rdb` tier; queries to the writedown
+# RDB would block on flushes. IDB serves the `idb` tier; HDB serves `hdb`.
+q tick++/src/gw.q \
   -p $GW_PORT -s $s_flag \
-  -rdbPort $RDB_PORT \
-  -crdbPort ${RDB_CHAIN_PORTS[*]} \
-  -hdbPort ${ALL_HDB_PORTS[*]} \
+  -rdbPort $CHAINED_RDB_PORT \
+  -idbPort $IDB_PORT \
+  -hdbPort $HDB_PORT \
   -analyticsDir $ANALYTIC_DIR \
   -procName GW \
   < /dev/null >> $PROCESS_LOG_DIR/startup.log 2>&1 &
