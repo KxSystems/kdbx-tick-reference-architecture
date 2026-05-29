@@ -20,8 +20,8 @@ The architecture contained within this repository consists of the following q pr
 ```
                                                ┌──> CHAINED_RDB ──> (serves `rdb` queries)
 TP ──> (sub) ──┬──> RDB ── flush every N min ──┴──> <IDB_DIR>/today/<i>/<table>/
-               │                              │
-               │                              └─ async signal ──> IDB.reload[] ──> (serves `idb` queries)
+               │                               │
+               │                               └─ async signal ──> IDB.reload[] ──> (serves `idb` queries)
                │
                └ EOD: RDB merges all int-partitions into <HDB_DIR>/<date>/, signals HDB.reload[]
 ```
@@ -34,7 +34,7 @@ Each `FLUSH_INTV_MIN` minutes the main RDB writes rows older than `now - FLUSH_I
 
 ## Trade-offs vs Base Tick
 
-Tick++ trades operational simplicity for query/ingest isolation and intraday durability. The pieces that change relative to [base tick](../tick/README.md) — and what you give up to get them — are listed below.
+Tick++ trades the simplicity of core Tick for query/ingest isolation and intraday durability. The pieces that change relative to [base tick](../tick/README.md) are as follows:
 
 ### What's added
 
@@ -46,28 +46,27 @@ Tick++ trades operational simplicity for query/ingest isolation and intraday dur
 | **Query tiers via GW** | 2: `rdb`, `hdb` (+ `both`) | 3: `rdb`, `idb`, `hdb` (+ `all`, fans across all three tiers) |
 | **Today's older data** | Sits in RDB memory until EOD; queried via `rdb` | Flushed to disk after `FLUSH_INTV_MIN` min; queried via `idb` |
 | **Runtime dirs** | `app/tplogs`, `app/hdb`, `app/proclogs` | adds `app/idb/` (staging for int-partitions) |
-| **Config surface** | 14 variables | adds `IDB_DIR`, `IDB_PORT`, `CHAINED_RDB_PORT`, `FLUSH_INTV_MIN` |
 
 ### Benefits
 
-- **Query path never blocks on writedown.** In base tick, every `rdb` query competes with the RDB's ingest loop and `.Q.hdpf` at EOD. In tick++ the CHAINED_RDB is dedicated to queries — it never touches disk and the writedown-role RDB never serves a query. Tail latency on either path stays predictable.
-- **Smaller RDB memory footprint at any given time.** Base tick's RDB grows monotonically all day; tick++'s main RDB sheds anything older than `FLUSH_INTV_MIN` on every flush. The same hardware can absorb a higher message rate or a longer trading day.
-- **Tighter data-loss window.** A base-tick RDB crash at 3pm loses the whole day's in-memory buffer (only the TP log saves you, and a corrupt TP log is fatal). A tick++ main RDB crash loses at most one flush interval — everything older is already durable under `app/idb/today/`.
-- **Today's older data is queryable.** Base tick has no way to query intraday data that's "too old to be in RDB but not yet in HDB" — that data simply doesn't exist there. Tick++'s `idb` tier covers exactly that gap.
-- **Cheaper EOD.** Tick's `.u.end` is a one-shot `.Q.hdpf` of the entire day's data from RAM to disk; tick++'s EOD is a sorted merge of int-partitions that are already on disk, which is faster and lower-memory.
+- **Query path never blocks on writedown.** In base tick, every `rdb` query competes with the RDB's ingest loop and `.Q.hdpf` at EOD. In tick++, the CHAINED_RDB is dedicated to queries so that it never touches disk and the writedown-role RDB never serves a query
+- **Smaller RDB memory footprint at any given time.** Base tick's RDB grows monotonically all day; tick++'s main RDB sheds anything older than `FLUSH_INTV_MIN` on every flush. The same database process can absorb a higher message rate or a longer trading day
+- **Tighter data-loss window.** A base-tick RDB crash at 3pm would lose the whole day's in-memory buffer (only the TP log saves you, and a corrupt TP log is fatal). A tick++ main RDB crash loses at most one flush interval — everything older is already durable under `app/idb/today/`.
+- **Today's older data is queryable.** Base tick has no way to query intraday data that's "too old to be in RDB but not yet in HDB". Tick++'s `idb` tier ensures this is not an issue
+- **Cheaper EOD.** Tick's `.u.end` is a one-shot `.Q.hdpf` of the entire day's data from RAM to disk; tick++'s EOD is a sorted merge of int-partitions that are already on disk, which is faster and lower-memory
 
 ### Costs
 
-- **More processes, more resources.** Two extra q processes (CHAINED_RDB, IDB) doubling the realtime memory footprint (both subscribe to TP and hold the same data) and adding their own CPU + heap.
-- **Duplicated TP fan-out.** Every `upd` from the TP is sent to both the main RDB and the CHAINED_RDB. At high publish rates the TP's outbound socket work roughly doubles.
-- **Continuous disk I/O.** Base tick writes to disk once per day; tick++ writes every `FLUSH_INTV_MIN` minutes. On constrained or slow storage this is the dominant cost.
+- **More processes, more resources.** Two extra q processes (CHAINED_RDB, IDB) double the realtime memory footprint (both subscribe to TP and hold the same data) and add their own CPU + heap
+- **Duplicated TP fan-out.** Every `upd` from the TP is sent to both the main RDB and the CHAINED_RDB. At high publish rates, the TP's outbound socket work roughly doubles.
+- **Continuous disk I/O.** Base tick writes to disk once per day; tick++ writes every `FLUSH_INTV_MIN` minutes. On constrained or slow storage this can become expensive
 - **More complex failure modes.**
-  - Main RDB dies mid-flush → a partially-written int-partition under `<IDB_DIR>/today/<i>/` (use a fresh `<i>` next time; the partial dir is benign but worth cleaning manually).
-  - IDB is down when the main RDB signals a reload → the IDB just keeps the stale view; the next signal (or restart) corrects it. The signal is fire-and-forget by design.
-  - CHAINED_RDB falls behind the main RDB → queries return slightly stale data. The two are independent TP subscribers, so they can desync briefly under load; both will catch up.
-- **Three-tier query model.** Callers need to understand the cutover between `rdb` (most recent), `idb` (today's older), and `hdb` (post-EOD). Base tick's two-tier `rdb`/`hdb` split is mentally simpler. The `all` target fans across all three tiers when callers don't want to pick — but "all of today's data" is now `rdb` + `idb` rather than just `rdb`.
-- **Schema must be loaded in one more place.** Base tick loads schemas in the TP and RDB. Tick++ and scaled-tick++ adds an IDB to that list (so it has table shapes + `g#sym` before the first reload).
-- **More configuration to keep in sync across scripts.** `IDB_DIR`, `IDB_PORT`, `CHAINED_RDB_PORT`, `FLUSH_INTV_MIN` must match across `startup.sh` and `restart.sh`.
+  - Main RDB dies mid-flush --> a partially-written int-partition under `<IDB_DIR>/today/<i>/` (use a fresh `<i>` next time; the partial dir is worth cleaning manually)
+  - IDB is down when the main RDB signals a reload --> the IDB just keeps the stale view; the next signal (or restart) corrects it. The signal is fire-and-forget by design
+  - CHAINED_RDB falls behind the main RDB --> queries return slightly stale data. The two are independent TP subscribers, so they can desync briefly under load; both will catch up
+- **Three-tier query model.** Callers need to understand the cutover between `rdb` (most recent), `idb` (today's older), and `hdb` (post-EOD). Base tick's two-tier `rdb`/`hdb` split is mentally simpler. The `all` target fans across all three tiers when users don't want to pick — but "all of today's data" is now `rdb` + `idb` rather than just `rdb`
+- **Schema must be loaded in one more place.** Base tick loads schemas in the TP and RDB. Tick++ and scaled-tick++ adds an IDB to that list (so it has table shapes + `g#sym` before the first reload)
+- **More configuration to keep in sync across scripts.** `IDB_DIR`, `IDB_PORT`, `CHAINED_RDB_PORT`, `FLUSH_INTV_MIN` must match across `startup.sh` and `restart.sh`
 
 ### When to pick which
 
@@ -75,7 +74,7 @@ Tick++ trades operational simplicity for query/ingest isolation and intraday dur
 | --- | --- |
 | Low-volume demo or single-tenant feed, query rate modest, EOD writedown comfortably finishes in the overnight window | `tick/` |
 | High publish rate, query latency SLA, want intraday durability, willing to run 2 more processes | `tick++/` |
-| Need multiple read replicas or fan-out beyond one chained RDB, or want chained-RDB failover into the leader role | `scaled-tick++/` (different trade-offs again — chained replicas + leader promotion, no separate IDB) |
+| Need multiple read replicas or fan-out beyond one chained RDB, or want chained-RDB failover into the leader role | `scaled-tick++/` |
 
 ## Usage
 
