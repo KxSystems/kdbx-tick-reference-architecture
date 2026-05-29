@@ -32,17 +32,19 @@ RDB_PORTS:CLI_ARGS[`rdbPort],$[()~CLI_ARGS[`crdbPort]; (); CLI_ARGS[`crdbPort]];
 .log.info[enlist["Connecting to DB processes [RDB port(s): %s] [IDB port: %s] [HDB port(s): %s]"],
     (RDB_PORTS; CLI_ARGS[`idbPort]; CLI_ARGS[`hdbPort])];
 
-// @desc DB connection registry — one row per `(handle; proc; alive; leader)` tuple
+// @desc DB connection table - one row per (handle; proc; alive; leader)
 // `leader` only applies to RDB rows; it is refreshed from each RDB's `MAIN_FLAG` so
 // the writedown leader can be excluded from the rdb query pool
-// IDB / HDB rows keep `leader=0b`
 CONNECTIONS:([handle:`long$()];proc:`$();alive:`boolean$();leader:`boolean$());
 
-// @desc Inflight request tracker; one row per deferred sync client
-REQUESTS:([reqID:`guid$()];clientHandle:`long$();ts:`timestamp$();target:`$());
+// @desc Inflight request tracker — one row per deferred sync client
+// Rows are cleaned on callback, timeout, client disconnect, or DB disconnect
+REQUESTS:([reqID:`guid$()];clientHandle:`int$();ts:`timestamp$();target:`$());
 
-// @desc Per-reqID partial results for `all` fan-out
-PENDING_ALL:(`guid$())!();
+// @desc Per-tier partial results for `all` fan-out, keyed by reqID
+PENDING_ALL_RDB:(`guid$())!();
+PENDING_ALL_IDB:(`guid$())!();
+PENDING_ALL_HDB:(`guid$())!();
 
 // @desc Request timeout — clients receive a tagged timeout error if a callback never arrives
 // Default 60s; override via `-reqTimeout <timespan>`
@@ -131,7 +133,6 @@ REQ_TIMEOUT:0D00:01:00^`timespan$1e9*"J"$first CLI_ARGS[`reqTimeout];
     if[target=`idb; .kxgw.dispatch[reqID;`idb;idbH;query]];
     if[target=`hdb; .kxgw.dispatch[reqID;`hdb;hdbH;query]];
     if[target=`all;
-        PENDING_ALL[reqID]:()!();
         rq:$[0h=type query; query 0; query];
         iq:$[0h=type query; query 1; query];
         hq:$[0h=type query; query 2; query];
@@ -158,7 +159,8 @@ REQ_TIMEOUT:0D00:01:00^`timespan$1e9*"J"$first CLI_ARGS[`reqTimeout];
             string rid; string tier)];
         :()
     ];
-    if[req`target = `all;
+
+    if[`all = req`target;
         .kxgw.collectAll[rid; tier; result];
         :()
     ];
@@ -167,15 +169,22 @@ REQ_TIMEOUT:0D00:01:00^`timespan$1e9*"J"$first CLI_ARGS[`reqTimeout];
     };
 
 // @desc Accumulate per-tier results for an `all` fan-out request
+// Writes the result into the matching per-tier dict; when all three tiers have arrived,
+// builds the `rdb`idb`hdb!(...) dict and resumes deferred client response
 //
 // @param rid     {guid}      Request id
 // @param tier    {symbol}    Source tier
 // @param result  {*}         Per-tier result
 .kxgw.collectAll:{[rid;tier;result]
-    PENDING_ALL[rid]:(PENDING_ALL[rid]),(enlist tier)!enlist result;
-    if[3=count PENDING_ALL[rid];
-        full:`rdb`idb`hdb#PENDING_ALL[rid];
-        PENDING_ALL::rid _ PENDING_ALL;
+    if[tier=`rdb; PENDING_ALL_RDB[rid]:result];
+    if[tier=`idb; PENDING_ALL_IDB[rid]:result];
+    if[tier=`hdb; PENDING_ALL_HDB[rid]:result];
+    haveAll:(rid in key PENDING_ALL_RDB) and (rid in key PENDING_ALL_IDB) and rid in key PENDING_ALL_HDB;
+    if[haveAll;
+        full:`rdb`idb`hdb!(PENDING_ALL_RDB[rid]; PENDING_ALL_IDB[rid]; PENDING_ALL_HDB[rid]);
+        PENDING_ALL_RDB::rid _ PENDING_ALL_RDB;
+        PENDING_ALL_IDB::rid _ PENDING_ALL_IDB;
+        PENDING_ALL_HDB::rid _ PENDING_ALL_HDB;
         clientH:REQUESTS[rid;`clientHandle];
         @[-30!; (clientH; 0b; full); {.log.warn["Failed to resume deferred response: ",x]}];
         REQUESTS::REQUESTS _ rid
@@ -197,7 +206,9 @@ REQ_TIMEOUT:0D00:01:00^`timespan$1e9*"J"$first CLI_ARGS[`reqTimeout];
     if[count stale;
         .log.warn[("Client ",string[h]," disconnected with ",string[count stale]," inflight request(s)")];
         REQUESTS::delete from REQUESTS where reqID in stale;
-        PENDING_ALL::stale _ PENDING_ALL
+        PENDING_ALL_RDB::stale _ PENDING_ALL_RDB;
+        PENDING_ALL_IDB::stale _ PENDING_ALL_IDB;
+        PENDING_ALL_HDB::stale _ PENDING_ALL_HDB
     ];
     };
 
@@ -215,7 +226,9 @@ REQ_TIMEOUT:0D00:01:00^`timespan$1e9*"J"$first CLI_ARGS[`reqTimeout];
             {.log.warn["Failed to send timeout to client: ",x]}]} each value stale;
         staleIDs:exec reqID from stale;
         REQUESTS::delete from REQUESTS where reqID in staleIDs;
-        PENDING_ALL::staleIDs _ PENDING_ALL
+        PENDING_ALL_RDB::staleIDs _ PENDING_ALL_RDB;
+        PENDING_ALL_IDB::staleIDs _ PENDING_ALL_IDB;
+        PENDING_ALL_HDB::staleIDs _ PENDING_ALL_HDB
         ];
     };
 
@@ -225,7 +238,7 @@ REQ_TIMEOUT:0D00:01:00^`timespan$1e9*"J"$first CLI_ARGS[`reqTimeout];
 // @desc Periodic garbage collection — keeps memory returned to the heap
 .timer.funcs[`gc]:{[] .Q.gc[]};
 
-// 2s timer drives leader refresh, timeout sweep, and gc.
+// 2s timer drives leader refresh, timeout sweep, and gc
 system"t 2000";
 
 .log.info[("GW successfully initialized on port [%s]"; `long$first system"p")];
