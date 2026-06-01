@@ -1,5 +1,6 @@
 // REST endpoints for the energy table.
 //   /energy/rdb   - query realtime energy
+//   /energy/idb   - query intraday-flushed energy (tick++/, scaled-tick++/ only)
 //   /energy/hdb   - query historical energy
 //   /energy/meta  - return meta (schema) for energy
 //
@@ -17,6 +18,18 @@ energyRdbQuery:{[t1;t2;s]
  };
 
 energyRdbREST:{energyRdbQuery . value x[`arg]};
+
+// ── IDB query ───────────────────────────────────────────────────────────
+// Same shape as the RDB query — no `date` filter since IDB only holds today's
+// flushed int-partitions. Returns an error dict on tick/ (no `idb` tier).
+
+energyIdbQuery:{[t1;t2;s]
+    w:enlist (within;`time;(t1;t2));
+    if[not null s; w:w,enlist (=;`sym;enlist s)];
+    .restgw.query[`idb; (?;`energy;w;0b;())]
+ };
+
+energyIdbREST:{energyIdbQuery . value x[`arg]};
 
 // ── HDB query ───────────────────────────────────────────────────────────
 
@@ -40,6 +53,19 @@ energyMetaREST:{[x] .restgw.query[`hdb; "0!meta `energy"]};
     (`endpoint; "/energy/rdb");
     (`description; "Query the energy table on an RDB (realtime)");
     (`qFunc; energyRdbREST);
+    (
+        `params;
+        .rest.reg.data[`t1;-16h;0b;0D00:00:00.000000000;"Lower time bound (timespan)"],
+        .rest.reg.data[`t2;-16h;0b;0D23:59:59.999999999;"Upper time bound (timespan)"],
+        .rest.reg.data[`s;-11h;0b;`;"Blower sym (e.g. BLOWER78_1) to filter for"]
+    )
+ );
+
+.endpoints.energyIdb:(!). flip (
+    (`request; `get);
+    (`endpoint; "/energy/idb");
+    (`description; "Query the energy table on the IDB (intraday)");
+    (`qFunc; energyIdbREST);
     (
         `params;
         .rest.reg.data[`t1;-16h;0b;0D00:00:00.000000000;"Lower time bound (timespan)"],

@@ -1,6 +1,6 @@
 # Scaled Tick++ Reference Architecture
 
-A template for a scalable KDB-X Tick++ architecture with additional layers for custom configuration.
+A deployable template for a scalable KDB-X Tick++ architecture with additional layers for custom configuration.
 
 ## Description
 
@@ -309,6 +309,21 @@ curl "localhost:${REST_PORT}/energy/rdb"
 curl "localhost:${REST_PORT}/energy/rdb?s=BLOWER78_1"
 ```
 
+### /energy/idb
+
+Query the energy table on the IDB (today's intraday-flushed int-partitions).
+
+| Parameter | Required | Type      | Default                    | Description                  |
+|-----------|----------|-----------|----------------------------|------------------------------|
+| t1        | No       | Timespan  | 0D00:00:00.000000000       | Lower time bound             |
+| t2        | No       | Timespan  | 0D23:59:59.999999999       | Upper time bound             |
+| s         | No       | Symbol    | (all)                      | Sym filter (e.g. BLOWER78_1) |
+
+```bash
+curl "localhost:${REST_PORT}/energy/idb"
+curl "localhost:${REST_PORT}/energy/idb?s=BLOWER78_1"
+```
+
 ### /energy/hdb
 
 Query the energy table on the HDB (historical data).
@@ -332,7 +347,7 @@ Returns the schema of the energy table.
 curl "localhost:${REST_PORT}/energy/meta"
 ```
 
-### /weather/rdb, /weather/hdb, /weather/meta
+### /weather/rdb, /weather/idb, /weather/hdb, /weather/meta
 
 Same structure as the energy endpoints, applied to the weather table.
 

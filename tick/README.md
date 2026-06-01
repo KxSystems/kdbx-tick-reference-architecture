@@ -1,6 +1,6 @@
 # Tick Reference Architecture
 
-A template for base KDB-X tick architecture.
+A deployable template for base KDB-X tick architecture.
 
 ## Description
 

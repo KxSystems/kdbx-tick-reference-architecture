@@ -1,6 +1,6 @@
 # Tick++ Reference Architecture
 
-A template for KDB-X tick architecture extended with an **intraday writedown** path. Base Tick's single RDB does both ingest and EOD writedown; Tick++ splits those concerns across two RDB processes and introduces an IDB process that serves the flushed data.
+A deployable template for KDB-X tick architecture extended with an **intraday writedown** path. Base Tick's single RDB does both ingest and EOD writedown; Tick++ splits those concerns across two RDB processes and introduces an IDB process that serves the flushed data.
 
 ## Description
 
@@ -270,6 +270,21 @@ curl "localhost:${GW_PORT}/energy/rdb"
 curl "localhost:${GW_PORT}/energy/rdb?s=BLOWER78_1"
 ```
 
+### /energy/idb
+
+Query the energy table on the IDB (today's intraday-flushed int-partitions).
+
+| Parameter | Required | Type      | Default                    | Description                  |
+|-----------|----------|-----------|----------------------------|------------------------------|
+| t1        | No       | Timespan  | 0D00:00:00.000000000       | Lower time bound             |
+| t2        | No       | Timespan  | 0D23:59:59.999999999       | Upper time bound             |
+| s         | No       | Symbol    | (all)                      | Sym filter (e.g. BLOWER78_1) |
+
+```bash
+curl "localhost:${GW_PORT}/energy/idb"
+curl "localhost:${GW_PORT}/energy/idb?s=BLOWER78_1"
+```
+
 ### /energy/hdb
 
 Query the energy table on the HDB (historical data).
@@ -293,7 +308,7 @@ Returns the schema of the energy table.
 curl "localhost:${GW_PORT}/energy/meta"
 ```
 
-### /weather/rdb, /weather/hdb, /weather/meta
+### /weather/rdb, /weather/idb, /weather/hdb, /weather/meta
 
 Same structure as the energy endpoints, applied to the weather table.
 

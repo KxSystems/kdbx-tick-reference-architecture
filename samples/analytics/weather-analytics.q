@@ -1,5 +1,6 @@
 // REST endpoints for the weather table.
 //   /weather/rdb   - query realtime weather
+//   /weather/idb   - query intraday-flushed weather (tick++/, scaled-tick++/ only)
 //   /weather/hdb   - query historical weather
 //   /weather/meta  - return meta (schema) for weather
 //
@@ -17,6 +18,18 @@ weatherRdbQuery:{[t1;t2;s]
  };
 
 weatherRdbREST:{weatherRdbQuery . value x[`arg]};
+
+// ── IDB query ───────────────────────────────────────────────────────────
+// Same shape as the RDB query — no `date` filter since IDB only holds today's
+// flushed int-partitions. Returns an error dict on tick/ (no `idb` tier).
+
+weatherIdbQuery:{[t1;t2;s]
+    w:enlist (within;`time;(t1;t2));
+    if[not null s; w:w,enlist (=;`sym;enlist s)];
+    .restgw.query[`idb; (?;`weather;w;0b;())]
+ };
+
+weatherIdbREST:{weatherIdbQuery . value x[`arg]};
 
 // ── HDB query ───────────────────────────────────────────────────────────
 // HDB partitions expose the partition key as virtual column `date`.
@@ -41,6 +54,19 @@ weatherMetaREST:{[x] .restgw.query[`hdb; "0!meta `weather"]};
     (`endpoint; "/weather/rdb");
     (`description; "Query the weather table on an RDB (realtime)");
     (`qFunc; weatherRdbREST);
+    (
+        `params;
+        .rest.reg.data[`t1;-16h;0b;0D00:00:00.000000000;"Lower time bound (timespan)"],
+        .rest.reg.data[`t2;-16h;0b;0D23:59:59.999999999;"Upper time bound (timespan)"],
+        .rest.reg.data[`s;-11h;0b;`;"Location sym (e.g. `$\"San Diego\") to filter for"]
+    )
+ );
+
+.endpoints.weatherIdb:(!). flip (
+    (`request; `get);
+    (`endpoint; "/weather/idb");
+    (`description; "Query the weather table on the IDB (intraday)");
+    (`qFunc; weatherIdbREST);
     (
         `params;
         .rest.reg.data[`t1;-16h;0b;0D00:00:00.000000000;"Lower time bound (timespan)"],
