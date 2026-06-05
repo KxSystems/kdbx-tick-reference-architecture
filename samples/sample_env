@@ -17,12 +17,12 @@ export IDB_PORT=5015
 export RTE_PORT=5016
 export REST_PORT=5018
 
-# Intraday writedown (scaled-tick++): the leader RDB flushes int-partitions into IDB_DIR
+# Intraday writedown (scaled-tick-x): the leader RDB flushes int-partitions into IDB_DIR
 # every FLUSH_INTV_MIN minutes; the single IDB serves them on the `idb` query tier.
 export IDB_DIR=$ROOT_DIR/app/idb
 export FLUSH_INTV_MIN=5
 
-# Deferred-sync GW (scaled-tick++): per-request timeout, and number of REST_GW
+# Deferred-sync GW (scaled-tick-x): per-request timeout, and number of REST_GW
 # front-ends. REST_GWs share REST_PORT via SO_REUSEPORT (linux kernel load-balances;
 # on macOS BSD the semantics differ and >1 is mostly demonstrative).
 export REQ_TIMEOUT=0D00:01:00

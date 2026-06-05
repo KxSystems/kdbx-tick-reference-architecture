@@ -10,8 +10,8 @@ Shared collection of architecture diagrams and technical documents. The committe
 
 - [arch/](arch/) — architecture diagrams (`.drawio.png` files), one per architecture variant
 - [tick/](tick/) — base tick stack (TP / RDB / HDB / FH / RTE / GW); simplest reference pattern
-- [tick++/](tick++/) — adds intraday writedown: RDB writes int-partitions, IDB serves them, CHAINED_RDB serves queries
-- [scaled-tick++/](scaled-tick++/) — adds chained-RDB failover (RDB_CHAIN_N / HDB_EXTRA_N replicas via `-m N`)
+- [tick-x/](tick-x/) — adds intraday writedown: RDB writes int-partitions, IDB serves them, CHAINED_RDB serves queries
+- [scaled-tick-x/](scaled-tick-x/) — adds chained-RDB failover (RDB_CHAIN_N / HDB_EXTRA_N replicas via `-m N`)
 - [samples/](samples/) — shared schemas, analytics, sample data, sample env
 - [README.md](README.md) — top-level overview and per-variant entry points
 

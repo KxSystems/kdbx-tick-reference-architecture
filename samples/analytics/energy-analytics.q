@@ -1,6 +1,6 @@
 // REST endpoints for the energy table.
 //   /energy/rdb   - query realtime energy
-//   /energy/idb   - query intraday-flushed energy (tick++/, scaled-tick++/ only)
+//   /energy/idb   - query intraday-flushed energy (tick-x/, scaled-tick-x/ only)
 //   /energy/hdb   - query historical energy
 //   /energy/meta  - return meta (schema) for energy
 //
