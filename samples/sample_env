@@ -15,18 +15,11 @@ export GW_PORT=5013
 export FH_PORT=5014
 export IDB_PORT=5015
 export RTE_PORT=5016
-export REST_PORT=5018
 
-# Intraday writedown (scaled-tick-x): the leader RDB flushes int-partitions into IDB_DIR
-# every FLUSH_INTV_MIN minutes; the single IDB serves them on the `idb` query tier.
+# Intraday writedown (tick-x): the main RDB flushes int-partitions into IDB_DIR
+# every FLUSH_INTV_MIN minutes; the IDB serves them on the `idb` query tier.
 export IDB_DIR=$ROOT_DIR/app/idb
 export FLUSH_INTV_MIN=5
-
-# Deferred-sync GW (scaled-tick-x): per-request timeout, and number of REST_GW
-# front-ends. REST_GWs share REST_PORT via SO_REUSEPORT (linux kernel load-balances;
-# on macOS BSD the semantics differ and >1 is mostly demonstrative).
-export REQ_TIMEOUT=0D00:01:00
-export REST_GW_COUNT=1
 
 # Feedhandler
 export FH_TIMER=60000
@@ -37,7 +30,3 @@ export ANALYTIC_DIR=$ROOT_DIR/samples/analytics
 
 # Real-Time Engine
 export RTE_ENRICH_FILE=$ROOT_DIR/samples/enrichments/enrich-sample.q
-
-# Scaling: base port for chained RDB/HDB pairs (-m flag)
-# Paired scheme: PARALLEL_PORT_RANGE_START + 2*i (RDB_CHAIN_i), +2*i+1 (HDB_EXTRA_i)
-export PARALLEL_PORT_RANGE_START=5020

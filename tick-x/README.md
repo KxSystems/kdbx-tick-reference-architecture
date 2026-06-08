@@ -75,7 +75,7 @@ Tick-X trades the simplicity of core Tick for query/ingest isolation and intrada
   - IDB is down when the main RDB signals a reload --> the IDB just keeps the stale view; the next signal (or restart) corrects it. The signal is fire-and-forget by design
   - CHAINED_RDB falls behind the main RDB --> queries return slightly stale data. The two are independent TP subscribers, so they can desync briefly under load; both will catch up
 - **Three-tier query model.** Callers need to understand the cutover between `rdb` (most recent), `idb` (today's older), and `hdb` (post-EOD). Base tick's two-tier `rdb`/`hdb` split is mentally simpler. The `all` target fans across all three tiers when users don't want to pick — but "all of today's data" is now `rdb` + `idb` rather than just `rdb`
-- **Schema must be loaded in one more place.** Base tick loads schemas in the TP and RDB. Tick-X and scaled-tick-x adds an IDB to that list (so it has table shapes + `g#sym` before the first reload)
+- **Schema must be loaded in one more place.** Base tick loads schemas in the TP and RDB. Tick-X adds an IDB to that list (so it has table shapes + `g#sym` before the first reload)
 - **More configuration to keep in sync across scripts.** `IDB_DIR`, `IDB_PORT`, `CHAINED_RDB_PORT`, `FLUSH_INTV_MIN` must match across `startup.sh` and `restart.sh`
 
 ### When to pick which
@@ -84,7 +84,6 @@ Tick-X trades the simplicity of core Tick for query/ingest isolation and intrada
 | --- | --- |
 | Low-volume demo or single-tenant feed, query rate modest, EOD writedown comfortably finishes in the overnight window | `tick/` |
 | High publish rate, query latency SLA, want intraday durability, willing to run 2 more processes | `tick-x/` |
-| Need multiple read replicas or fan-out beyond one chained RDB, or want chained-RDB failover into the leader role | `scaled-tick-x/` |
 
 ## Usage
 

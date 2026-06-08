@@ -1,6 +1,6 @@
 // REST endpoints for the weather table.
 //   /weather/rdb   - query realtime weather
-//   /weather/idb   - query intraday-flushed weather (tick-x/, scaled-tick-x/ only)
+//   /weather/idb   - query intraday-flushed weather (tick-x/ only)
 //   /weather/hdb   - query historical weather
 //   /weather/meta  - return meta (schema) for weather
 //
