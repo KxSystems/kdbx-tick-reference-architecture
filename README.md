@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The KDB-X Tick-X Reference Architecture contains basic and scalable reference architectures and deployment instructions. The aim is to allow users to quickly deploy a full tickerplant system configuration to ingest & persist data into the database processes with the ability to query from both simultaneously. We also leverage the use of KDB-X modules where relevant for a slightly enhanced experience of typical Tick architecture.
+The Tick-X Reference Architecture contains basic and scalable reference architectures and deployment instructions using KDB-X. The aim is to allow users to quickly deploy a full tickerplant system configuration to ingest & persist data into the database processes with the ability to query from both simultaneously. We also leverage the use of KDB-X modules where relevant for a slightly enhanced experience of typical Tick architecture.
 
 Each reference architecture contains a detailed README on how to deploy the architecture and basic usage instructions. Please visit and register to the [KX Developer Center](https://developer.kx.com) for further information on KDB-X with documentation on usage, modules, walk through examples, and tutorials.
 
