@@ -35,11 +35,13 @@ The defaults listed below are defined in [`samples/sample_env`](../samples/sampl
 
   | Variable        | Default Value                              | Description                                                                          |
   | --------------- | ------------------------------------------ | ------------------------------------------------------------------------------------ |
-  | SCHEMA_DIR      | samples/schemas                            | Directory containing one or more `.q` files with table schemas used by the system.   |
-  | TPLOG_DIR       | app/tplogs                                 | Directory to store tickerplant log files (auto-created).                             |
+  | ROOT_DIR        | _project root_ (`$(pwd)` at launch)        | Base directory every other path is derived from. The scripts run from the project root, so the defaults below resolve to absolute paths under it. |
+  | SCHEMA_DIR      | $ROOT_DIR/samples/schemas                  | Directory containing one or more `.q` files with table schemas used by the system.   |
+  | SAMPLE_DATA     | $ROOT_DIR/samples/data                     | Directory the sample feedhandler reads tick data from (consumed by the feed via `getenv`). |
+  | TPLOG_DIR       | $ROOT_DIR/app/tplogs                       | Directory to store tickerplant log files (auto-created).                             |
   | TPLOG_NAME      | tpLog                                      | Prefix for the tickerplant log file name.                                            |
-  | HDB_DIR         | app/hdb                                    | Directory to store on-disk partitioned HDB data (auto-created).                      |
-  | PROCESS_LOG_DIR | app/proclogs                               | Directory to store per-process log files (auto-created).                             |
+  | HDB_DIR         | $ROOT_DIR/app/hdb                          | Directory to store on-disk partitioned HDB data (auto-created).                      |
+  | PROCESS_LOG_DIR | $ROOT_DIR/app/proclogs                     | Directory to store per-process log files (auto-created).                             |
   | LOG_LEVEL       | info                                       | Default log level. Accepted: `trace`, `debug`, `info`, `warn`, `error`, `fatal`.     |
   | TICK_PORT       | 5010                                       | Port for the tickerplant process.                                                    |
   | RDB_PORT        | 5011                                       | Port for the realtime database process.                                              |
@@ -48,7 +50,9 @@ The defaults listed below are defined in [`samples/sample_env`](../samples/sampl
   | FH_PORT         | 5014                                       | Port for the feedhandler process.                                                    |
   | RTE_PORT        | 5016                                       | Port for the real-time engine process.                                               |
   | FH_TIMER        | 60000                                      | Feedhandler publish interval in milliseconds.                                        |
-  | ANALYTIC_DIR    | samples/analytics                          | Directory containing REST endpoint analytics `.q` files loaded by the gateway.       |
+  | ANALYTIC_DIR    | $ROOT_DIR/samples/analytics                | Directory containing REST endpoint analytics `.q` files loaded by the gateway.       |
+  | FH_ANALYTIC_DIR | $ROOT_DIR/samples/data/fh-analytics        | _Optional._ Directory of custom feedhandler parse `.q` files. Not loaded by the scripts by default — a convenience pointer for custom feed-parsing setups. |
+  | RTE_ENRICH_FILE | $ROOT_DIR/samples/enrichments/enrich-sample.q | _Optional._ Path to an RTE enrichment `.q` file. Not loaded by default; pass it to the RTE via the `-enrichFile` CLI arg (see [Real-Time Enrichment](#real-time-enrichment)). |
 
 ### Start
 
