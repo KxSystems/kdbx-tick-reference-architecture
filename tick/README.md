@@ -29,9 +29,9 @@ The following KDB-X modules are required for full deployment of the system as th
 
 ### Configuration
 
-Base tick is designed to run out-of-the-box with no per-deployment setup. All configuration is hardcoded in the scripts under `tick/scripts/`. `tick/scripts/startup.sh` auto-creates the runtime directories on first run.
+Base tick is designed to run out-of-the-box with no per-deployment setup. All configuration lives in a single shared env file, [`samples/sample_env`](../samples/sample_env), which the `tick/scripts/` and `tick-x/scripts/` scripts source — so a value changed there applies to both stacks. `tick/scripts/startup.sh` auto-creates the runtime directories on first run. To customize without editing the committed defaults, copy the file and pass it with `-e` (e.g. `./tick/scripts/startup.sh -e .env`).
 
-The defaults listed below are baked into the `Configuration` block at the top of `tick/scripts/startup.sh`:
+The defaults listed below are defined in [`samples/sample_env`](../samples/sample_env) (tick-x-only settings such as `IDB_DIR` and `CHAINED_RDB_PORT` are present there too but ignored by the base tick scripts):
 
   | Variable        | Default Value                              | Description                                                                          |
   | --------------- | ------------------------------------------ | ------------------------------------------------------------------------------------ |
@@ -320,11 +320,11 @@ startup.log
 
 ### Log level
 
-The default log level is `info` (set in the `Configuration` block of `tick/scripts/startup.sh` as `LOG_LEVEL`, which is exported so q reads it via `getenv`). It can be overridden per-process in two ways:
+The default log level is `info` (set as `LOG_LEVEL` in the shared [`samples/sample_env`](../samples/sample_env), which is exported so q reads it via `getenv`). It can be overridden per-process in two ways:
 
 | Method | Example | Scope |
 |--------|---------|-------|
-| Edit `LOG_LEVEL` in `tick/scripts/startup.sh` | `LOG_LEVEL="debug"` | All processes launched by the script |
+| Edit `LOG_LEVEL` in `samples/sample_env` | `LOG_LEVEL="debug"` | All processes launched by the script |
 | CLI arg `-logLevel` | `q tick/src/rte.q ... -logLevel debug ...` | One process (takes precedence over env) |
 
 Accepted values: `trace`, `debug`, `info`, `warn`, `error`, `fatal`. Anything else logs a `warn` on startup and the level stays at `info`. When the effective level is not `info`, the process logs `Log level set to [<level>]` as its first info line.

@@ -76,7 +76,7 @@ Tick-X trades the simplicity of core Tick for query/ingest isolation and intrada
   - CHAINED_RDB falls behind the main RDB --> queries return slightly stale data. The two are independent TP subscribers, so they can desync briefly under load; both will catch up
 - **Three-tier query model.** Callers need to understand the cutover between `rdb` (most recent), `idb` (today's older), and `hdb` (post-EOD). Base tick's two-tier `rdb`/`hdb` split is mentally simpler. The `all` target fans across all three tiers when users don't want to pick — but "all of today's data" is now `rdb` + `idb` rather than just `rdb`
 - **Schema must be loaded in one more place.** Base tick loads schemas in the TP and RDB. Tick-X adds an IDB to that list (so it has table shapes + `g#sym` before the first reload)
-- **More configuration to keep in sync across scripts.** `IDB_DIR`, `IDB_PORT`, `CHAINED_RDB_PORT`, `FLUSH_INTV_MIN` must match across `startup.sh` and `restart.sh`
+- **More configuration to track.** Tick-X adds `IDB_DIR`, `IDB_PORT`, `CHAINED_RDB_PORT`, and `FLUSH_INTV_MIN`. These live alongside the base settings in the shared [`samples/sample_env`](../samples/sample_env) sourced by both `startup.sh` and `restart.sh`, so they stay in sync automatically — but there are simply more knobs than base tick exposes
 
 ### When to pick which
 
@@ -97,9 +97,9 @@ The following KDB-X modules are required for full deployment of the system as th
 
 ### Configuration
 
-Tick-X is designed to run out-of-the-box with no per-deployment setup. All configuration is hardcoded in the scripts under `tick-x/scripts/`. `tick-x/scripts/startup.sh` auto-creates the runtime directories on first run.
+Tick-X is designed to run out-of-the-box with no per-deployment setup. All configuration lives in a single shared env file, [`samples/sample_env`](../samples/sample_env), which the `tick/scripts/` and `tick-x/scripts/` scripts source — so a value changed there applies to both stacks. `tick-x/scripts/startup.sh` auto-creates the runtime directories on first run. To customize without editing the committed defaults, copy the file and pass it with `-e` (e.g. `./tick-x/scripts/startup.sh -e .env`).
 
-The defaults listed below are baked into the `Configuration` block at the top of `tick-x/scripts/startup.sh`:
+The defaults listed below are defined in [`samples/sample_env`](../samples/sample_env):
 
   | Variable        | Default Value                              | Description                                                                          |
   | --------------- | ------------------------------------------ | ------------------------------------------------------------------------------------ |
@@ -417,11 +417,11 @@ startup.log
 
 ### Log level
 
-The default log level is `info` (set in the `Configuration` block of `tick-x/scripts/startup.sh` as `LOG_LEVEL`, which is exported so q reads it via `getenv`). It can be overridden per-process in two ways:
+The default log level is `info` (set as `LOG_LEVEL` in the shared [`samples/sample_env`](../samples/sample_env), which is exported so q reads it via `getenv`). It can be overridden per-process in two ways:
 
 | Method | Example | Scope |
 |--------|---------|-------|
-| Edit `LOG_LEVEL` in `tick-x/scripts/startup.sh` | `LOG_LEVEL="debug"` | All processes launched by the script |
+| Edit `LOG_LEVEL` in `samples/sample_env` | `LOG_LEVEL="debug"` | All processes launched by the script |
 | CLI arg `-logLevel` | `q tick-x/src/rte.q ... -logLevel debug ...` | One process (takes precedence over env) |
 
 Accepted values: `trace`, `debug`, `info`, `warn`, `error`, `fatal`. Anything else logs a `warn` on startup and the level stays at `info`. When the effective level is not `info`, the process logs `Log level set to [<level>]` as its first info line.

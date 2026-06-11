@@ -3,7 +3,7 @@
 # Restart a specific process without taking down the whole stack
 # Run from the project root directory
 #
-# Usage: ./tick/scripts/restart.sh <procName> [-s secondaries]
+# Usage: ./tick/scripts/restart.sh <procName> [-s secondaries] [-e envfile]
 #
 # procName: TP | RDB | HDB | FH | RTE | GW
 #
@@ -11,31 +11,13 @@
 #   ./tick/scripts/restart.sh GW
 #   ./tick/scripts/restart.sh RTE
 #
-# All configuration is hardcoded below — keep in sync with tick/scripts/startup.sh
+# Config comes from the shared env file (sourced below), same as
+# tick/scripts/startup.sh — edit one place and both stay in sync.
 
 #################
 # Configuration #
 #################
-TPLOG_DIR="app/tplogs"
-HDB_DIR="app/hdb"
-PROCESS_LOG_DIR="app/proclogs"
-
-SCHEMA_DIR="samples/schemas"
-ANALYTIC_DIR="samples/analytics"
-
-TPLOG_NAME="tpLog"
-LOG_LEVEL="info"
-
-TICK_PORT=5010
-RDB_PORT=5011
-HDB_PORT=5012
-GW_PORT=5013
-FH_PORT=5014
-RTE_PORT=5016
-
-FH_TIMER=60000
-
-export SCHEMA_DIR TPLOG_NAME LOG_LEVEL
+ENV_FILE="samples/sample_env"
 
 ###############
 # CLI-parsing #
@@ -44,18 +26,26 @@ proc_name=$1
 shift
 
 if [ -z "$proc_name" ]; then
-  printf "Usage: ./tick/scripts/restart.sh <procName> [-s secondaries]\n"
+  printf "Usage: ./tick/scripts/restart.sh <procName> [-s secondaries] [-e envfile]\n"
   exit 1
 fi
 
 s_flag=0
 
-while getopts 's:' flag; do
+while getopts 's:e:' flag; do
   case "${flag}" in
     s) s_flag="${OPTARG}" ;;
+    e) ENV_FILE="${OPTARG}" ;;
     *) exit 1 ;;
   esac
 done
+
+# Load shared configuration (defines + exports ports, paths, intervals)
+if [ ! -f "$ENV_FILE" ]; then
+  echo "Config file not found: $ENV_FILE (run from the project root, or pass -e <file>)" >&2
+  exit 1
+fi
+. "$ENV_FILE"
 
 kill_proc() {
   local pattern=$1

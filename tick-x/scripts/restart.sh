@@ -3,7 +3,7 @@
 # Restart a specific process without taking down the whole stack
 # Run from the project root directory
 #
-# Usage: ./tick-x/scripts/restart.sh <procName> [-s secondaries]
+# Usage: ./tick-x/scripts/restart.sh <procName> [-s secondaries] [-e envfile]
 #
 # procName: TP | RDB | CHAINED_RDB | IDB | HDB | FH | RTE | GW
 #
@@ -13,37 +13,15 @@
 #   ./tick-x/scripts/restart.sh CHAINED_RDB
 #   ./tick-x/scripts/restart.sh IDB
 #
-# All configuration is hardcoded below — keep in sync with tick-x/scripts/startup.sh
+# Config comes from the shared env file (sourced below), same as
+# tick-x/scripts/startup.sh — edit one place and both stay in sync. Runtime
+# paths are absolute (derived from ROOT_DIR) because the processes cd into the
+# HDB root at connect.
 
 #################
 # Configuration #
 #################
-# Absolute runtime dirs (must match startup.sh — processes cd into the HDB root at connect)
-ROOT_DIR="$(pwd)"
-TPLOG_DIR="$ROOT_DIR/app/tplogs"
-HDB_DIR="$ROOT_DIR/app/hdb"
-IDB_DIR="$ROOT_DIR/app/idb"
-PROCESS_LOG_DIR="$ROOT_DIR/app/proclogs"
-
-SCHEMA_DIR="samples/schemas"
-ANALYTIC_DIR="samples/analytics"
-
-TPLOG_NAME="tpLog"
-LOG_LEVEL="info"
-
-TICK_PORT=5010
-RDB_PORT=5011          # main RDB (writedown role)
-HDB_PORT=5012
-GW_PORT=5013
-FH_PORT=5014
-IDB_PORT=5015
-RTE_PORT=5016
-CHAINED_RDB_PORT=5017    # chained RDB (query role)
-
-FH_TIMER=60000
-FLUSH_INTV_MIN=5
-
-export SCHEMA_DIR TPLOG_NAME LOG_LEVEL PROCESS_LOG_DIR
+ENV_FILE="samples/sample_env"
 
 ###############
 # CLI-parsing #
@@ -52,18 +30,26 @@ proc_name=$1
 shift
 
 if [ -z "$proc_name" ]; then
-  printf "Usage: ./tick-x/scripts/restart.sh <procName> [-s secondaries]\n"
+  printf "Usage: ./tick-x/scripts/restart.sh <procName> [-s secondaries] [-e envfile]\n"
   exit 1
 fi
 
 s_flag=0
 
-while getopts 's:' flag; do
+while getopts 's:e:' flag; do
   case "${flag}" in
     s) s_flag="${OPTARG}" ;;
+    e) ENV_FILE="${OPTARG}" ;;
     *) exit 1 ;;
   esac
 done
+
+# Load shared configuration (defines + exports ports, paths, intervals)
+if [ ! -f "$ENV_FILE" ]; then
+  echo "Config file not found: $ENV_FILE (run from the project root, or pass -e <file>)" >&2
+  exit 1
+fi
+. "$ENV_FILE"
 
 kill_proc() {
   local pattern=$1

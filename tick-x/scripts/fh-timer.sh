@@ -3,18 +3,24 @@
 # Start or stop the feedhandler ingest timer without restarting the FH process
 # Source this file to expose start_fh_timer and stop_fh_timer functions
 #
-# Usage:
+# Usage (run from the project root):
 #   source ./tick-x/scripts/fh-timer.sh
 #   start_fh_timer   # enable ingest at $FH_TIMER ms intervals
 #   stop_fh_timer    # pause ingest
 #
-# All configuration is hardcoded below — keep in sync with tick-x/scripts/startup.sh
+# FH_PORT / FH_TIMER come from the shared env file (sourced below), the same one
+# used by startup.sh / restart.sh, so the timer always matches the running stack.
+# Override with: ENV_FILE=.env source ./tick-x/scripts/fh-timer.sh
 
 #################
 # Configuration #
 #################
-FH_PORT=5014
-FH_TIMER=60000
+ENV_FILE="${ENV_FILE:-samples/sample_env}"
+if [ -f "$ENV_FILE" ]; then
+  . "$ENV_FILE"
+else
+  echo "Config file not found: $ENV_FILE (source from the project root, or set ENV_FILE)" >&2
+fi
 
 FH_URL="::$FH_PORT"
 

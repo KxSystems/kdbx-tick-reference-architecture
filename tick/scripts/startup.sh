@@ -3,43 +3,17 @@
 # Start all processes for base Tick Architecture.
 # Run from the project root directory.
 #
-# Usage: ./tick/scripts/startup.sh [-s secondaries]
+# Usage: ./tick/scripts/startup.sh [-s secondaries] [-e envfile]
 #   -s  Secondary threads per process (default: 0)
+#   -e  Path to the shared env config file (default: samples/sample_env)
 #
-# All configuration is hardcoded below
-# To customize, edit the constants block directly
+# All ports, paths, and intervals live in the shared env file (sourced below),
+# so the tick and tick-x stacks stay in sync. Copy it and pass -e to customize.
 
 #################
 # Configuration #
 #################
-# Runtime directories (created automatically below if missing)
-TPLOG_DIR="app/tplogs"
-HDB_DIR="app/hdb"
-PROCESS_LOG_DIR="app/proclogs"
-
-# Schema and analytics inputs
-SCHEMA_DIR="samples/schemas"
-ANALYTIC_DIR="samples/analytics"
-
-# Tickerplant log file prefix
-TPLOG_NAME="tpLog"
-
-# Logging
-LOG_LEVEL="info"
-
-# Process ports
-TICK_PORT=5010
-RDB_PORT=5011
-HDB_PORT=5012
-GW_PORT=5013
-FH_PORT=5014
-RTE_PORT=5016
-
-# Feedhandler timer interval (milliseconds)
-FH_TIMER=60000
-
-# Export values read by q processes via getenv
-export SCHEMA_DIR TPLOG_NAME LOG_LEVEL PROCESS_LOG_DIR
+ENV_FILE="samples/sample_env"
 
 ###############
 # CLI-parsing #
@@ -47,16 +21,25 @@ export SCHEMA_DIR TPLOG_NAME LOG_LEVEL PROCESS_LOG_DIR
 s_flag=0
 
 print_usage() {
-  printf "Usage: ./tick/scripts/startup.sh [-s secondaries]\n"
+  printf "Usage: ./tick/scripts/startup.sh [-s secondaries] [-e envfile]\n"
   printf "  -s  Secondary threads per process (default: 0)\n"
+  printf "  -e  Path to the shared env config file (default: samples/sample_env)\n"
 }
 
-while getopts 's:' flag; do
+while getopts 's:e:' flag; do
   case "${flag}" in
     s) s_flag="${OPTARG}" ;;
+    e) ENV_FILE="${OPTARG}" ;;
     *) print_usage; exit 1 ;;
   esac
 done
+
+# Load shared configuration (defines + exports ports, paths, intervals)
+if [ ! -f "$ENV_FILE" ]; then
+  echo "Config file not found: $ENV_FILE (run from the project root, or pass -e <file>)" >&2
+  exit 1
+fi
+. "$ENV_FILE"
 
 # Auto-create runtime directories so the q redirections below don't fail
 mkdir -p "$TPLOG_DIR" "$HDB_DIR" "$PROCESS_LOG_DIR"

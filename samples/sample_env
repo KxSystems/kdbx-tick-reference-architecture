@@ -1,4 +1,16 @@
-export ROOT_DIR=$HOME/kdbx-tick-reference-architecture
+# Shared configuration for the tick and tick-x reference stacks.
+#
+# Sourced by every startup.sh / restart.sh under tick/scripts and tick-x/scripts,
+# so a value changed here applies to BOTH levels. The tick-x-only settings (IDB,
+# chained RDB, flush interval) are simply ignored by the base tick scripts.
+#
+# To customize without touching the committed defaults, copy this file (e.g. to
+# .env) and pass it with -e:  ./tick-x/scripts/startup.sh -e .env
+#
+# Paths are derived from ROOT_DIR. ROOT_DIR defaults to the directory the script
+# was launched from (the project root), so absolute paths hold even after the q
+# processes cd into the HDB root at connect time.
+export ROOT_DIR="${ROOT_DIR:-$(pwd)}"
 export SCHEMA_DIR=$ROOT_DIR/samples/schemas
 export SAMPLE_DATA=$ROOT_DIR/samples/data
 export TPLOG_DIR=$ROOT_DIR/app/tplogs
@@ -9,12 +21,13 @@ export LOG_LEVEL=info
 
 # Process ports
 export TICK_PORT=5010
-export RDB_PORT=5011
+export RDB_PORT=5011             # tick-x: main RDB (writedown role)
 export HDB_PORT=5012
 export GW_PORT=5013
 export FH_PORT=5014
 export IDB_PORT=5015
 export RTE_PORT=5016
+export CHAINED_RDB_PORT=5017     # tick-x: chained RDB (query role)
 
 # Intraday writedown (tick-x): the main RDB flushes int-partitions into IDB_DIR
 # every FLUSH_INTV_MIN minutes; the IDB serves them on the `idb` query tier.
