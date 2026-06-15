@@ -463,7 +463,7 @@ An end-to-end test suite is provided at `tests/e2e-test.q`. It covers data inges
 q tick-x/tests/e2e-test.q -gwPort 5013 -tpPort 5010 -fhPort 5014 -procName e2e
 ```
 
-Results are written to `app/proclogs/e2e_<datetime>.log` in the same structured format as all other process logs.
+Logging defaults to `app/proclogs`, so results are written to `app/proclogs/e2e_<datetime>.log` in the same structured format as all other process logs.
 
 ## Appendix
 
