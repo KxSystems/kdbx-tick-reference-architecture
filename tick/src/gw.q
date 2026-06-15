@@ -42,8 +42,9 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
 //
 // @param x       {int}       Handle that just closed
 .z.pc:{
+    if[not x in exec handle from CONNECTIONS; :()];
     .log.warn[("Lost connection to DB process:\t %r"; CONNECTIONS[x])];
-    CONNECTIONS[x;`alive]:0b;
+    CONNECTIONS[x;`alive]:0b
     };
 
 // @desc Return a random handle of an alive RDB connection, or 0N if none alive
