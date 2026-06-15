@@ -41,9 +41,10 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
      }[label] ./: flip (1+til count ports; ports);
     };
 
-.kxgw.tryConnect["RDB_"; CLI_ARGS[`rdbPort]];
-.kxgw.tryConnect["IDB_"; CLI_ARGS[`idbPort]];
-.kxgw.tryConnect["HDB_"; CLI_ARGS[`hdbPort]];
+// @desc Configured DB targets as (labelPrefix; portList) pairs — used for the initial
+// connect and re-used by the reconnect timer so a restarted DB process is picked back up.
+.kxgw.targets:(("RDB_"; CLI_ARGS[`rdbPort]); ("IDB_"; CLI_ARGS[`idbPort]); ("HDB_"; CLI_ARGS[`hdbPort]));
+.kxgw.tryConnect ./: .kxgw.targets;
 
 // @desc Mark the closed handle as not alive in CONNECTIONS
 //
@@ -126,6 +127,19 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
 
 .log.info["Registering endpoints:\t",.j.j value 1_.endpoints[;`endpoint]];
 .rest.register ./: value value each 1_.endpoints;
+
+// @desc Reconnect timer — retry any tier with no alive handle so the GW recovers after a
+// DB process restarts (or a DB starts after the GW). Reaps dead/stale rows first — including
+// junk rows left by non-DB client disconnects — so CONNECTIONS doesn't grow unbounded.
+.kxgw.reconnect:{[]
+    delete from `CONNECTIONS where not alive;
+    {[t]
+        pat:(t 0),"*";
+        if[count select from CONNECTIONS where alive, proc like pat; :()];
+        .kxgw.tryConnect . t;
+     } each .kxgw.targets;
+    };
+.timer.funcs[`reconnect]:.kxgw.reconnect;
 
 // @desc Periodic garbage collection — keeps memory returned to the heap
 .timer.funcs[`gc]:{[] .Q.gc[]};
