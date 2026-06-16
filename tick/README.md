@@ -179,7 +179,7 @@ gwh (`.kxgw.query; `hdb; "select from energy where date=.z.d-1")
 gwh (`.kxgw.query; `both; "select from energy")
 ```
 
-See `samples/analytics/endpoints-examples.q` for further examples.
+See `samples/endpoints-examples.q` for further examples.
 
 #### REST
 
@@ -232,7 +232,7 @@ Same structure as the energy endpoints, applied to the weather table.
 
 | Parameter | Required | Type      | Default  | Description                       |
 |-----------|----------|-----------|----------|-----------------------------------|
-| s         | No       | Symbol    | (all)    | Location sym (e.g. `San Diego`)   |
+| s         | No       | Symbol    | (all)    | Location sym (e.g. `SanDiego`)    |
 
 </details>
 

@@ -20,7 +20,7 @@ system"l tick-x/utils/main.q";
 .log.info["Initializing GW"];
 
 .log.info[enlist["Connecting to DB processes [CHAINED_RDB port: %s] [IDB port: %s] [HDB port: %s]"],
-    (CLI_ARGS[`rdbPort]; CLI_ARGS[`idbPort]; CLI_ARGS[`hdbPort])];
+    (first CLI_ARGS[`rdbPort]; first CLI_ARGS[`idbPort]; first CLI_ARGS[`hdbPort])];
 
 // @desc DB connection registry — one row per `(handle; proc; alive)` triple
 CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());

@@ -12,7 +12,7 @@ system"l tick/utils/main.q";
 .log.info["Initializing GW"];
 
 .log.info[enlist["Connecting to DB processes [RDB port: %s] [HDB port: %s]"],
-    (CLI_ARGS[`rdbPort]; CLI_ARGS[`hdbPort])];
+    (first CLI_ARGS[`rdbPort]; first CLI_ARGS[`hdbPort])];
 
 // @desc DB connection registry — one row per `(handle; proc; alive)` triple
 CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());

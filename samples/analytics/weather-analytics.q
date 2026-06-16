@@ -58,7 +58,7 @@ weatherMetaREST:{[x] .restgw.query[`hdb; "0!meta `weather"]};
         `params;
         .rest.reg.data[`t1;-16h;0b;0D00:00:00.000000000;"Lower time bound (timespan)"],
         .rest.reg.data[`t2;-16h;0b;0D23:59:59.999999999;"Upper time bound (timespan)"],
-        .rest.reg.data[`s;-11h;0b;`;"Location sym (e.g. `$\"San Diego\") to filter for"]
+        .rest.reg.data[`s;-11h;0b;`;"Location sym (e.g. SanDiego) to filter for"]
     )
  );
 
@@ -71,7 +71,7 @@ weatherMetaREST:{[x] .restgw.query[`hdb; "0!meta `weather"]};
         `params;
         .rest.reg.data[`t1;-16h;0b;0D00:00:00.000000000;"Lower time bound (timespan)"],
         .rest.reg.data[`t2;-16h;0b;0D23:59:59.999999999;"Upper time bound (timespan)"],
-        .rest.reg.data[`s;-11h;0b;`;"Location sym (e.g. `$\"San Diego\") to filter for"]
+        .rest.reg.data[`s;-11h;0b;`;"Location sym (e.g. SanDiego) to filter for"]
     )
  );
 
@@ -85,7 +85,7 @@ weatherMetaREST:{[x] .restgw.query[`hdb; "0!meta `weather"]};
         .rest.reg.data[`d;-14h;1b;.z.d-1;"Partition date to query"],
         .rest.reg.data[`t1;-16h;0b;0D00:00:00.000000000;"Lower time bound (timespan)"],
         .rest.reg.data[`t2;-16h;0b;0D23:59:59.999999999;"Upper time bound (timespan)"],
-        .rest.reg.data[`s;-11h;0b;`;"Location sym (e.g. `$\"San Diego\") to filter for"]
+        .rest.reg.data[`s;-11h;0b;`;"Location sym (e.g. SanDiego) to filter for"]
     )
  );
 
