@@ -99,9 +99,9 @@ run["weather rdb filter by sym narrows results";
     {[r]
         if[not is200 r; :0b];
         rows:.t.parse r`body;
-        (0=count rows) or all {x[`sym]~"San Diego"} each rows
+        (0=count rows) or all {x[`sym]~"SanDiego"} each rows
     };
-    .t.httpGet["/weather/rdb?s=San%20Diego"]];
+    .t.httpGet["/weather/rdb?s=SanDiego"]];
 
 // ── /weather/hdb ────────────────────────────────────────────────────────
 -1 "\n=== /weather/hdb ===\n";

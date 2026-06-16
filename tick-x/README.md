@@ -261,7 +261,7 @@ Note: the `rdb` tier is served by the chained RDB (`chainedrdb.q`), **not** the 
 
 The `rdb` tier returns only the **un-flushed tail** (rows newer than the latest flush); `idb` holds the flushed remainder of today. The two are disjoint (see [Flushed watermark](#flushed-watermark)), so for *all* of today's data use the `all` target — or combine `rdb` + `idb` — without double-counting.
 
-See `samples/analytics/endpoints-examples.q` for further examples.
+See `samples/endpoints-examples.q` for further examples.
 
 #### REST
 
@@ -329,7 +329,7 @@ Same structure as the energy endpoints, applied to the weather table.
 
 | Parameter | Required | Type      | Default  | Description                       |
 |-----------|----------|-----------|----------|-----------------------------------|
-| s         | No       | Symbol    | (all)    | Location sym (e.g. `San Diego`)   |
+| s         | No       | Symbol    | (all)    | Location sym (e.g. `SanDiego`)    |
 
 </details>
 
@@ -463,7 +463,7 @@ An end-to-end test suite is provided at `tests/e2e-test.q`. It covers data inges
 q tick-x/tests/e2e-test.q -gwPort 5013 -tpPort 5010 -fhPort 5014 -procName e2e
 ```
 
-Results are written to `app/proclogs/e2e_<datetime>.log` in the same structured format as all other process logs.
+Logging defaults to `app/proclogs`, so results are written to `app/proclogs/e2e_<datetime>.log` in the same structured format as all other process logs.
 
 ## Appendix
 

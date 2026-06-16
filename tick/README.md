@@ -179,7 +179,7 @@ gwh (`.kxgw.query; `hdb; "select from energy where date=.z.d-1")
 gwh (`.kxgw.query; `both; "select from energy")
 ```
 
-See `samples/analytics/endpoints-examples.q` for further examples.
+See `samples/endpoints-examples.q` for further examples.
 
 #### REST
 
@@ -232,7 +232,7 @@ Same structure as the energy endpoints, applied to the weather table.
 
 | Parameter | Required | Type      | Default  | Description                       |
 |-----------|----------|-----------|----------|-----------------------------------|
-| s         | No       | Symbol    | (all)    | Location sym (e.g. `San Diego`)   |
+| s         | No       | Symbol    | (all)    | Location sym (e.g. `SanDiego`)    |
 
 </details>
 
@@ -363,10 +363,10 @@ stop_fh_timer    # pause ingest
 An end-to-end test suite is provided at `tests/e2e-test.q`. It covers data ingestion, q-IPC and REST queries, EOD, and operational scripts. Run it from the project root after starting the stack:
 
 ```bash
-q tick/tests/e2e-test.q -gwPort 5013 -tpPort 5010 -fhPort 5014 -procName e2e
+q tick-x/tests/e2e-test.q -gwPort 5013 -tpPort 5010 -fhPort 5014 -procName e2e
 ```
 
-Results are written to `app/proclogs/e2e_<datetime>.log` in the same structured format as all other process logs.
+Logging defaults to `app/proclogs`, so results are written to `app/proclogs/e2e_<datetime>.log` in the same structured format as all other process logs.
 
 ## Appendix
 

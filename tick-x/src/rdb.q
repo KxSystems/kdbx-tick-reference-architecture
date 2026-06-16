@@ -111,7 +111,12 @@ upd:{[t;x]
 // Each non-empty `g#sym` root table is enumerated against the shared HDB sym domain
 // and written to <staging>/<i>/<table>/.
 .rdb.flush:{[]
-    cutoff:"n"$.z.P - .rdb.flushIntv * 0D00:01;
+    // Cutoff is a UTC time-of-day, matching the feed's `time` column (.z.n is UTC).
+    // Using `.z.P` (local) here skews the flush window by the machine's UTC offset: in
+    // UTC+ zones every row reads as already-old and is shed by the watermark floor below
+    // WITHOUT being persisted (silent intraday data loss); in UTC- zones nothing flushes
+    // until rows age past the offset. Keep this on the same clock as the feed.
+    cutoff:"n"$.z.p - .rdb.flushIntv * 0D00:01;
     // Drop anything already persisted (time < watermark) before selecting the flush slice. After a
     // restart the TP re-delivers buffered-but-already-logged rows via live `upd` — which can land
     // after the connect-time applyWatermark — so without this floor the flush would re-persist them
@@ -120,8 +125,7 @@ upd:{[t;x]
     idx:count key .rdb.tmp;
     // Each table returns 1b if it wrote a partition; `any` aggregates into a real local so the
     // post-flush signalling below fires. (A `flushed::1b` inside the lambda would set a GLOBAL,
-    // never this local — the original code had exactly that latent bug, masked because the
-    // sample feed's future-dated `time` meant the cutoff never matched any rows to flush.)
+    // never this local — keep it a local return value.)
     flushed:any {[cutoff;idx;t]
         v:value t;
         n:sum v[`time]<cutoff;
