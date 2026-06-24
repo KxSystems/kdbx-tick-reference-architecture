@@ -363,7 +363,7 @@ stop_fh_timer    # pause ingest
 An end-to-end test suite is provided at `tests/e2e-test.q`. It covers data ingestion, q-IPC and REST queries, EOD, and operational scripts. Run it from the project root after starting the stack:
 
 ```bash
-q tick-x/tests/e2e-test.q -gwPort 5013 -tpPort 5010 -fhPort 5014 -procName e2e
+q tick/tests/e2e-test.q -gwPort 5013 -tpPort 5010 -fhPort 5014 -procName e2e
 ```
 
 Logging defaults to `app/proclogs`, so results are written to `app/proclogs/e2e_<datetime>.log` in the same structured format as all other process logs.

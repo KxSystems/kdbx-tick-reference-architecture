@@ -62,7 +62,6 @@ Tick-X trades the simplicity of core Tick for query/ingest isolation and intrada
 - **Query path never blocks on writedown.** In base tick, every `rdb` query competes with the RDB's ingest loop and `.Q.hdpf` at EOD. In tick-x, the CHAINED_RDB is dedicated to queries so that it never touches disk and the writedown-role RDB never serves a query
 - **Smaller RDB memory footprint at any given time.** Base tick's RDB grows monotonically all day; tick-x's main RDB sheds anything older than `FLUSH_INTV_MIN` on every flush. The same database process can absorb a higher message rate or a longer trading day
 - **Tighter data-loss window.** A base-tick RDB crash at 3pm would lose the whole day's in-memory buffer (only the TP log saves you, and a corrupt TP log is fatal). A tick-x main RDB crash loses at most one flush interval — everything older is already durable under `app/idb/today/`.
-- **Today's older data is queryable.** Base tick has no way to query intraday data that's "too old to be in RDB but not yet in HDB". Tick-X's `idb` tier ensures this is not an issue
 - **Cheaper EOD.** Tick's `.u.end` is a one-shot `.Q.hdpf` of the entire day's data from RAM to disk; tick-x's EOD is a sorted merge of int-partitions that are already on disk, which is faster and lower-memory
 
 ### Costs
