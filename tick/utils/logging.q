@@ -13,7 +13,11 @@
 .log.initFile:{[proc;dt]
     // Define log file based on current time and sanitise file name
     timeStr:ssr[;;""]/[string dt;(".";":")];
-    fp:hsym `$getenv[`PROCESS_LOG_DIR],"/",proc,"_",timeStr,".log";
+    // Default to app/proclogs when PROCESS_LOG_DIR is unset
+    dir:$[count d:getenv`PROCESS_LOG_DIR; d; "app/proclogs"];
+
+    system "mkdir -p \"",dir,"\"";
+    fp:hsym `$dir,"/",proc,"_",timeStr,".log";
     // Remove default output to stderr/stdout (1/2) and replace with log file
     // TODO: review this method
     .log.remove[1;`trace`debug`info`warn];

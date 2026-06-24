@@ -11,7 +11,21 @@ system"l tick/utils/main.q";
 
 .log.info["Initializing HDB"];
 
-// Mount the on-disk historical database
+// Load table schemas so the HDB answers meta / queries before its first EOD partition
+// exists. Loaded BEFORE mounting the db so real partitions override these empty in-memory
+// tables once they are written.
+{[x]
+    system each "l ",/:1_/:string .Q.dd[sDir;] each key sDir:hsym `$x;
+    .log.info[("Loaded schemas from files: %s"; tables[])];
+    }[getenv[`SCHEMA_DIR]];
+
+// It's the HDB: present the `date` partition column up front so meta and date-filtered
+// queries (e.g. /<tbl>/hdb?d=...) match the post-EOD partitioned shape and don't error on
+// a cold start. Tables that already carry a `date` column keep their own (moved to front).
+{[tn] t:value tn; if[not `date in cols t; t:update date:`date$() from t]; tn set `date xcols t;} each tables`.;
+@[;`sym;`g#] each tables`.;
+
+// Mount the on-disk historical database (partitioned tables override the empty in-mem schema)
 system"l ",first CLI_ARGS[`hdbDir];
 
 // @desc Reload the HDB from disk — picks up data added outside the normal tick EOD path
