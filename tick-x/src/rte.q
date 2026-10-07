@@ -74,7 +74,7 @@ TP_H:0N;
 //
 // @return        {boolean}   1b on success, 0b if the TP was unreachable
 .rte.connectTP:{[]
-    h:@[hopen; `$"::",first CLI_ARGS[`tpPort]; {.log.warn["Failed to connect to TP: ",x]; 0N}];
+    h:@[hopen; `$.main.addr first CLI_ARGS[`tpPort]; {.log.warn["Failed to connect to TP: ",x]; 0N}];
     if[null h; :0b];
     TP_H::h;
     {[t;s] TP_H (`.u.sub; t; s)} ' [key[.rte.subscriptions];value[.rte.subscriptions]];

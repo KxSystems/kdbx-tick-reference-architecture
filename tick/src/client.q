@@ -20,22 +20,22 @@ system"l tick/utils/main.q";
 .log.info["Initializing Q client"];
 
 // @desc IPC handle to the Feedhandler — null when FH is unreachable at startup
-FH_H:@[hopen; `$"::",first CLI_ARGS[`fhPort];  {.log.warn["Failed to connect to FH: ", x]; 0N}];
+FH_H:@[hopen; `$.main.addr first CLI_ARGS[`fhPort];  {.log.warn["Failed to connect to FH: ", x]; 0N}];
 
 // @desc IPC handle to the Gateway — entry point for `.kxgw.query` calls
-GW_H:@[hopen; `$"::",first CLI_ARGS[`gwPort];  {.log.warn["Failed to connect to GW: ", x]; 0N}];
+GW_H:@[hopen; `$.main.addr first CLI_ARGS[`gwPort];  {.log.warn["Failed to connect to GW: ", x]; 0N}];
 
 // @desc IPC handle to the Tickerplant — useful for `.u.end[date]` and `.u.sub[...]`
-TP_H:@[hopen; `$"::",first CLI_ARGS[`tpPort];  {.log.warn["Failed to connect to TP: ", x]; 0N}];
+TP_H:@[hopen; `$.main.addr first CLI_ARGS[`tpPort];  {.log.warn["Failed to connect to TP: ", x]; 0N}];
 
 // @desc IPC handle to the Real-Time Engine
-RTE_H:@[hopen; `$"::",first CLI_ARGS[`rtePort]; {.log.warn["Failed to connect to RTE: ",x]; 0N}];
+RTE_H:@[hopen; `$.main.addr first CLI_ARGS[`rtePort]; {.log.warn["Failed to connect to RTE: ",x]; 0N}];
 
 // @desc IPC handle to the Realtime Database — direct (non-gateway) RDB queries
-RDB_H:@[hopen; `$"::",first CLI_ARGS[`rdbPort]; {.log.warn["Failed to connect to RDB: ",x]; 0N}];
+RDB_H:@[hopen; `$.main.addr first CLI_ARGS[`rdbPort]; {.log.warn["Failed to connect to RDB: ",x]; 0N}];
 
 // @desc IPC handle to the Historical Database — direct (non-gateway) HDB queries
-HDB_H:@[hopen; `$"::",first CLI_ARGS[`hdbPort]; {.log.warn["Failed to connect to HDB: ",x]; 0N}];
+HDB_H:@[hopen; `$.main.addr first CLI_ARGS[`hdbPort]; {.log.warn["Failed to connect to HDB: ",x]; 0N}];
 
 .log.info["Successfully initialized Q client"];
 .log.info[("  FH_H:  %s"; $[null FH_H;  "NOT CONNECTED"; string FH_H])];

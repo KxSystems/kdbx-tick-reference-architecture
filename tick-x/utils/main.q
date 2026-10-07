@@ -3,6 +3,12 @@
 // Parse command line arguments
 CLI_ARGS:.Q.opt .z.x;
 
+// Build a hopen target from a CLI endpoint arg.
+//  - bare port ("5010")        -> "::5010"       (localhost, the run-script default)
+//  - host:port ("tp:5010")     -> ":tp:5010"     (remote host, e.g. a compose service name)
+// A single leading colon with no host (":5010") would be a FILE handle, hence the "::".
+.main.addr:{[ep] $[":" in ep; ":",ep; "::",ep]};
+
 // initialize timer library
 system"l tick-x/utils/timer.q";
 

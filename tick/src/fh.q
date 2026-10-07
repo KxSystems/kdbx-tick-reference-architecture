@@ -21,7 +21,7 @@ system"l tick/utils/main.q";
     i:0;
     h:0N;
     while[(i < maxRetries) and null h;
-        h:@[hopen; `$"::",first CLI_ARGS[`tpPort]; {.log.warn[x]; 0N}];
+        h:@[hopen; `$.main.addr first CLI_ARGS[`tpPort]; {.log.warn[x]; 0N}];
         if[null h;
             delay:(0.1 * 2 xexp i) + 0.1 * first 1?1f;
             .log.warn[("TP connect attempt %d/%d failed, retrying in %s ms";i+1;maxRetries;string`long$1000*delay)];

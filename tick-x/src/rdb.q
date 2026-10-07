@@ -37,13 +37,13 @@ upd:{[t;x]
     t insert x;
     };
 
-// @desc TP and HDB endpoints — bare ports from CLI, prepended with "::" for TCP loopback
-.u.x:("::",first CLI_ARGS[`tpPort];"::",first CLI_ARGS[`hdbPort]);
+// @desc TP and HDB endpoints — bare ports (localhost) or host:port from CLI, resolved by .main.addr
+.u.x:(.main.addr first CLI_ARGS[`tpPort];.main.addr first CLI_ARGS[`hdbPort]);
 
-// @desc IDB endpoint — target for post-flush `.idb.reload[]` signals. Must use the "::" TCP
-// form (like `.u.x`); a single colon (`:5015`) is a FILE handle, so the signal would be written
+// @desc IDB endpoint — target for post-flush `.idb.reload[]` signals. Must use the TCP
+// form from `.main.addr` (like `.u.x`); a single colon (`:5015`) is a FILE handle, so the signal would be written
 // to a junk file instead of sent to the IDB and the reload would never fire.
-.rdb.idb:`$"::",first CLI_ARGS[`idbPort];
+.rdb.idb:`$.main.addr first CLI_ARGS[`idbPort];
 
 // @desc HDB root dir (hsym) — sym enumeration domain when writing int-partitions
 .rdb.hdb:hsym `$first CLI_ARGS[`hdbDir];
@@ -206,7 +206,7 @@ TP_H:0N;
     // Replay rebuilds the whole day in memory; drop everything already persisted to the IDB
     // so the next flush only writes new rows (no re-flush / duplication after a mid-day restart).
     .rdb.applyWatermark[];
-    .log.info[("Connected to TP at port [%s]";2_.u.x[0])];
+    .log.info[("Connected to TP at port [%s]";{(first where not":"=x)_x} .u.x[0])];
     1b
     };
 
