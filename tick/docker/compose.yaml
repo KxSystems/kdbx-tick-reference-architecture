@@ -1,0 +1,200 @@
+# Base tick reference architecture as a Docker Compose project.
+#
+# Same six processes and wiring as tick/scripts/startup.sh. Run from this
+# directory (or pass -f tick/docker/compose.yaml from the repo root):
+#   docker compose up -d --build
+#
+# See tick/docker/README.md. Tunables live in example.env (copy to .env).
+
+name: kdbx-tick
+
+x-q: &q
+  build:
+    context: ../..
+    dockerfile: tick/docker/Dockerfile
+    args:
+      BASE_IMAGE: ${BASE_IMAGE:-portal.dl.kx.com/kdbx-q:latest-debian12}
+  image: kdbx-tick-reference:tick
+  init: true
+  restart: on-failure
+  environment: &q-env
+    TZ: UTC
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+    LOG_STDOUT: "1"          # also log to stdout so `docker compose logs` works
+    PROCESS_LOG_DIR: /opt/app/app/proclogs
+    SCHEMA_DIR: /opt/app/samples/schemas
+    TPLOG_NAME: tpLog
+
+# QLIC points at /run/secrets/kx in the image; it expects a directory
+x-license: &license ${KX_LICENSE_FILE:-${HOME}/.kx/kc.lic}:/run/secrets/kx/kc.lic:ro
+x-proclogs: &proclogs proclogs:/opt/app/app/proclogs
+
+x-health: &health
+  interval: 5s
+  timeout: 5s
+  retries: 3
+  start_period: 30s     # failures while starting do not count
+
+services:
+
+  tp:
+    <<: *q
+    command:
+      - q
+      - tick/src/tick.q
+      - -p
+      - "${TICK_PORT:-5010}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -schemaDir
+      - /opt/app/samples/schemas
+      - -tplogDir
+      - /opt/app/app/tplogs
+      - -procName
+      - TP
+    ports: ["127.0.0.1:${TICK_PORT:-5010}:${TICK_PORT:-5010}"]
+    volumes:
+      - *license
+      - *proclogs
+      - tplogs:/opt/app/app/tplogs
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${TICK_PORT:-5010}"]
+
+  hdb:
+    <<: *q
+    command:
+      - q
+      - tick/src/hdb.q
+      - -p
+      - "${HDB_PORT:-5012}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -hdbDir
+      - /opt/app/app/hdb
+      - -procName
+      - HDB
+    ports: ["127.0.0.1:${HDB_PORT:-5012}:${HDB_PORT:-5012}"]
+    volumes:
+      - *license
+      - *proclogs
+      - hdb:/opt/app/app/hdb
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${HDB_PORT:-5012}"]
+
+  rdb:
+    <<: *q
+    command:
+      - q
+      - tick/src/rdb.q
+      - -p
+      - "${RDB_PORT:-5011}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -tplogDir
+      - /opt/app/app/tplogs
+      - -hdbDir
+      - /opt/app/app/hdb
+      - -tpPort
+      - "tp:${TICK_PORT:-5010}"
+      - -hdbPort
+      - "hdb:${HDB_PORT:-5012}"
+      - -procName
+      - RDB
+    ports: ["127.0.0.1:${RDB_PORT:-5011}:${RDB_PORT:-5011}"]
+    volumes:
+      - *license
+      - *proclogs
+      # The RDB replays the TP log by the path the TP reports, so the mount
+      # point must match the TP's; it also writes the HDB at end of day.
+      - tplogs:/opt/app/app/tplogs
+      - hdb:/opt/app/app/hdb
+    depends_on:
+      tp: {condition: service_healthy}
+      hdb: {condition: service_healthy}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${RDB_PORT:-5011}", "127.0.0.1", "not null TP_H"]
+
+  fh:
+    <<: *q
+    command:
+      - q
+      - tick/src/fh.q
+      - -p
+      - "${FH_PORT:-5014}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -fhTimer
+      - "${FH_TIMER:-60000}"
+      - -tpPort
+      - "tp:${TICK_PORT:-5010}"
+      - -procName
+      - FH
+    ports: ["127.0.0.1:${FH_PORT:-5014}:${FH_PORT:-5014}"]
+    volumes:
+      - *license
+      - *proclogs
+    depends_on:
+      tp: {condition: service_healthy}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${FH_PORT:-5014}", "127.0.0.1", "not null TP_H"]
+
+  rte:
+    <<: *q
+    command:
+      - q
+      - tick/src/rte.q
+      - -p
+      - "${RTE_PORT:-5016}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -tpPort
+      - "tp:${TICK_PORT:-5010}"
+      - -procName
+      - RTE
+    ports: ["127.0.0.1:${RTE_PORT:-5016}:${RTE_PORT:-5016}"]
+    volumes:
+      - *license
+      - *proclogs
+    depends_on:
+      tp: {condition: service_healthy}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${RTE_PORT:-5016}", "127.0.0.1", "not null TP_H"]
+
+  gw:
+    <<: *q
+    command:
+      - q
+      - tick/src/gw.q
+      - -p
+      - "${GW_PORT:-5013}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -rdbPort
+      - "rdb:${RDB_PORT:-5011}"
+      - -hdbPort
+      - "hdb:${HDB_PORT:-5012}"
+      - -analyticsDir
+      - /opt/app/samples/analytics
+      - -procName
+      - GW
+    ports: ["127.0.0.1:${GW_PORT:-5013}:${GW_PORT:-5013}"]   # q IPC + REST
+    volumes:
+      - *license
+      - *proclogs
+    depends_on:
+      rdb: {condition: service_healthy}
+      hdb: {condition: service_healthy}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${GW_PORT:-5013}", "127.0.0.1",
+        'all {0<count select from CONNECTIONS where alive,proc like x} each ("RDB_*";"HDB_*")']
+
+volumes:
+  tplogs:
+  hdb:
+  proclogs:

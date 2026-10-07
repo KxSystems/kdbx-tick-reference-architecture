@@ -1,0 +1,279 @@
+# tick-x reference architecture as a Docker Compose project.
+#
+# Same eight processes and wiring as tick-x/scripts/startup.sh: the main RDB
+# writes int-partitions every FLUSH_INTV_MIN minutes, the IDB serves them, the
+# CHAINED_RDB serves the GW's `rdb` tier. Run from this directory (or pass
+# -f tick-x/docker/compose.yaml from the repo root):
+#   docker compose up -d --build
+#
+# See tick-x/docker/README.md. Tunables live in example.env (copy to .env).
+
+name: kdbx-tick-x
+
+x-q: &q
+  build:
+    context: ../..
+    dockerfile: tick-x/docker/Dockerfile
+    args:
+      BASE_IMAGE: ${BASE_IMAGE:-portal.dl.kx.com/kdbx-q:latest-debian12}
+  image: kdbx-tick-reference:tick-x
+  init: true
+  restart: on-failure
+  environment:
+    TZ: UTC                  # the flush cutoff compares against UTC feed times
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+    LOG_STDOUT: "1"          # also log to stdout so `docker compose logs` works
+    PROCESS_LOG_DIR: /opt/app/app/proclogs
+    SCHEMA_DIR: /opt/app/samples/schemas
+    TPLOG_NAME: tpLog
+
+# QLIC points at /run/secrets/kx in the image; it expects a directory
+x-license: &license ${KX_LICENSE_FILE:-${HOME}/.kx/kc.lic}:/run/secrets/kx/kc.lic:ro
+x-proclogs: &proclogs proclogs:/opt/app/app/proclogs
+
+x-health: &health
+  interval: 5s
+  timeout: 5s
+  retries: 3
+  start_period: 30s     # failures while starting do not count
+
+services:
+
+  tp:
+    <<: *q
+    command:
+      - q
+      - tick-x/src/tick.q
+      - -p
+      - "${TICK_PORT:-5010}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -schemaDir
+      - /opt/app/samples/schemas
+      - -tplogDir
+      - /opt/app/app/tplogs
+      - -procName
+      - TP
+    ports: ["127.0.0.1:${TICK_PORT:-5010}:${TICK_PORT:-5010}"]
+    volumes:
+      - *license
+      - *proclogs
+      - tplogs:/opt/app/app/tplogs
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${TICK_PORT:-5010}"]
+
+  # Started before the main RDB so the first flush signal lands on a live IDB
+  idb:
+    <<: *q
+    command:
+      - q
+      - tick-x/src/idb.q
+      - -p
+      - "${IDB_PORT:-5015}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -hdbDir
+      - /opt/app/app/hdb
+      - -idbDir
+      - /opt/app/app/idb
+      - -procName
+      - IDB
+    ports: ["127.0.0.1:${IDB_PORT:-5015}:${IDB_PORT:-5015}"]
+    volumes:
+      - *license
+      - *proclogs
+      - hdb:/opt/app/app/hdb:ro        # reads the sym file
+      # Mount the whole IDB dir, never just `today/`: the RDB rm -rf's `today`
+      # at end of day, which fails on a mount point.
+      - idb:/opt/app/app/idb:ro
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${IDB_PORT:-5015}"]
+
+  hdb:
+    <<: *q
+    command:
+      - q
+      - tick-x/src/hdb.q
+      - -p
+      - "${HDB_PORT:-5012}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -hdbDir
+      - /opt/app/app/hdb
+      - -procName
+      - HDB
+    ports: ["127.0.0.1:${HDB_PORT:-5012}:${HDB_PORT:-5012}"]
+    volumes:
+      - *license
+      - *proclogs
+      - hdb:/opt/app/app/hdb:ro
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${HDB_PORT:-5012}"]
+
+  # Writedown role: subscribes to the TP, flushes int-partitions to the IDB dir
+  # every FLUSH_INTV_MIN minutes, merges them into the HDB at end of day.
+  rdb:
+    <<: *q
+    command:
+      - q
+      - tick-x/src/rdb.q
+      - -p
+      - "${RDB_PORT:-5011}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -tplogDir
+      - /opt/app/app/tplogs
+      - -hdbDir
+      - /opt/app/app/hdb
+      - -idbDir
+      - /opt/app/app/idb
+      - -tpPort
+      - "tp:${TICK_PORT:-5010}"
+      - -hdbPort
+      - "hdb:${HDB_PORT:-5012}"
+      - -idbPort
+      - "idb:${IDB_PORT:-5015}"
+      - -flushIntvMin
+      - "${FLUSH_INTV_MIN:-5}"
+      - -procName
+      - RDB
+    ports: ["127.0.0.1:${RDB_PORT:-5011}:${RDB_PORT:-5011}"]
+    volumes:
+      - *license
+      - *proclogs
+      # The RDB replays the TP log by the path the TP reports, so the mount
+      # point must match the TP's.
+      - tplogs:/opt/app/app/tplogs:ro
+      - hdb:/opt/app/app/hdb
+      - idb:/opt/app/app/idb
+    depends_on:
+      tp: {condition: service_healthy}
+      idb: {condition: service_healthy}
+      hdb: {condition: service_healthy}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${RDB_PORT:-5011}", "127.0.0.1", "not null TP_H"]
+
+  # Query role: full-day in-memory view, shed below the flush watermark that the
+  # RDB writes to the IDB dir. Serves the GW's `rdb` tier.
+  chained-rdb:
+    <<: *q
+    command:
+      - q
+      - tick-x/src/chainedrdb.q
+      - -p
+      - "${CHAINED_RDB_PORT:-5017}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -tplogDir
+      - /opt/app/app/tplogs
+      - -hdbDir
+      - /opt/app/app/hdb
+      - -idbDir
+      - /opt/app/app/idb
+      - -tpPort
+      - "tp:${TICK_PORT:-5010}"
+      - -procName
+      - CHAINED_RDB
+    ports: ["127.0.0.1:${CHAINED_RDB_PORT:-5017}:${CHAINED_RDB_PORT:-5017}"]
+    volumes:
+      - *license
+      - *proclogs
+      - tplogs:/opt/app/app/tplogs:ro
+      - hdb:/opt/app/app/hdb:ro
+      - idb:/opt/app/app/idb:ro        # reads .watermark
+    depends_on:
+      tp: {condition: service_healthy}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${CHAINED_RDB_PORT:-5017}", "127.0.0.1", "not null TP_H"]
+
+  fh:
+    <<: *q
+    command:
+      - q
+      - tick-x/src/fh.q
+      - -p
+      - "${FH_PORT:-5014}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -fhTimer
+      - "${FH_TIMER:-60000}"
+      - -tpPort
+      - "tp:${TICK_PORT:-5010}"
+      - -procName
+      - FH
+    ports: ["127.0.0.1:${FH_PORT:-5014}:${FH_PORT:-5014}"]
+    volumes:
+      - *license
+      - *proclogs
+    depends_on:
+      tp: {condition: service_healthy}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${FH_PORT:-5014}", "127.0.0.1", "not null TP_H"]
+
+  rte:
+    <<: *q
+    command:
+      - q
+      - tick-x/src/rte.q
+      - -p
+      - "${RTE_PORT:-5016}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -tpPort
+      - "tp:${TICK_PORT:-5010}"
+      - -procName
+      - RTE
+    ports: ["127.0.0.1:${RTE_PORT:-5016}:${RTE_PORT:-5016}"]
+    volumes:
+      - *license
+      - *proclogs
+    depends_on:
+      tp: {condition: service_healthy}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${RTE_PORT:-5016}", "127.0.0.1", "not null TP_H"]
+
+  # `rdb` tier -> CHAINED_RDB, `idb` tier -> IDB, `hdb` tier -> HDB
+  gw:
+    <<: *q
+    command:
+      - q
+      - tick-x/src/gw.q
+      - -p
+      - "${GW_PORT:-5013}"
+      - -s
+      - "${SECONDARIES:-0}"
+      - -rdbPort
+      - "chained-rdb:${CHAINED_RDB_PORT:-5017}"
+      - -idbPort
+      - "idb:${IDB_PORT:-5015}"
+      - -hdbPort
+      - "hdb:${HDB_PORT:-5012}"
+      - -analyticsDir
+      - /opt/app/samples/analytics
+      - -procName
+      - GW
+    ports: ["127.0.0.1:${GW_PORT:-5013}:${GW_PORT:-5013}"]   # q IPC + REST
+    volumes:
+      - *license
+      - *proclogs
+    depends_on:
+      chained-rdb: {condition: service_healthy}
+      idb: {condition: service_healthy}
+      hdb: {condition: service_healthy}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "q", "/opt/app/healthcheck.q", "${GW_PORT:-5013}", "127.0.0.1",
+        'all {0<count select from CONNECTIONS where alive,proc like x} each ("RDB_*";"IDB_*";"HDB_*")']
+
+volumes:
+  tplogs:
+  hdb:
+  idb:
+  proclogs:
