@@ -6,7 +6,8 @@ Runs the [tick-x reference architecture](../README.md) as a Docker Compose proje
 
 - Docker with Compose v2
 - A KDB-X licence file (`kc.lic`). The default location is `~/.kx/kc.lic`; set `KX_LICENSE_FILE` to use another.
-- Access to the `kdbx-q` image (default `portal.dl.kx.com/kdbx-q:latest-debian12`). Set `BASE_IMAGE` to use another variant or registry.
+- Access to the `kdbx-q` image (default `portal.dl.kx.com/kdbx-q:5.0.20260723-rocky9-r1`). Set `BASE_IMAGE` to use another variant or registry.
+- Tested with `kdbx-q:5.0.20260723-rocky9-r1` (2026-10-14): all services healthy and the gateway returns data. The `kdbx-docker` project publishes Rocky Linux 9 images only, so there is no Debian variant to select.
 - Network access at build time: the image build fetches the `kx.log` and `printf` modules from their [GitHub repos](https://github.com/KxSystems), since the base image only ships `kx.rest`.
 
 ## Quick start
@@ -36,7 +37,7 @@ Every setting is optional. Defaults match [`samples/sample_env`](../../samples/s
 | Variable | Default | Equivalent script option |
 | --- | --- | --- |
 | `KX_LICENSE_FILE` | `~/.kx/kc.lic` | `QLIC` / local licence |
-| `BASE_IMAGE` | `portal.dl.kx.com/kdbx-q:latest-debian12` | the installed `q` |
+| `BASE_IMAGE` | `portal.dl.kx.com/kdbx-q:5.0.20260723-rocky9-r1` | the installed `q` |
 | `SECONDARIES` | `0` | `startup.sh -s` |
 | `LOG_LEVEL` | `info` | `LOG_LEVEL` |
 | `TICK_PORT` `RDB_PORT` `HDB_PORT` `GW_PORT` `FH_PORT` `IDB_PORT` `RTE_PORT` `CHAINED_RDB_PORT` | `5010` `5011` `5012` `5013` `5014` `5015` `5016` `5017` | same names in `sample_env` |

@@ -6,7 +6,7 @@
 # Build context is the REPO ROOT (see compose.yaml), not this directory:
 #   docker build -f tick/docker/Dockerfile -t kdbx-tick-reference:tick .
 
-ARG BASE_IMAGE=portal.dl.kx.com/kdbx-q:latest-debian12
+ARG BASE_IMAGE=portal.dl.kx.com/kdbx-q:5.0.20260723-rocky9-r1
 
 # The official kdbx-q image ships kx.rest but not the kx.log / printf modules
 # that utils/logging.q needs, so fetch them from their upstream repos.

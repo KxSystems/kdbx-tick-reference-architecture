@@ -13,7 +13,7 @@ x-q: &q
     context: ../..
     dockerfile: tick/docker/Dockerfile
     args:
-      BASE_IMAGE: ${BASE_IMAGE:-portal.dl.kx.com/kdbx-q:latest-debian12}
+      BASE_IMAGE: ${BASE_IMAGE:-portal.dl.kx.com/kdbx-q:5.0.20260723-rocky9-r1}
   image: kdbx-tick-reference:tick
   init: true
   restart: on-failure
