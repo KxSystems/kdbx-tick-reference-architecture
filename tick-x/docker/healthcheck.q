@@ -4,7 +4,8 @@
 / With no expression it is a plain liveness check (port is accepting IPC).
 / -
 / Used instead of the image's kdbx-healthcheck, which was observed to exit 0
-/ even against a closed port, so it could never mark a container unhealthy.
+/ even against a closed port (its wrapper passes -q -T before the script, and q
+/ then skips the script), so it could never mark a container unhealthy.
 / NB: never write a bare `/` comment line in q; it starts a block comment.
 a:.z.x;
 if[1>count a;exit 2];

@@ -82,7 +82,7 @@ Timing: a check runs every 5s; a service is unhealthy after 3 consecutive failur
 
 Recovery follows each process's own reconnect logic, so unhealthy states can last a while after a dependency returns: the GW retries its tiers every 60s, and the chained RDB and RTE retry the TP every 60s. The writedown RDB checks on the flush timer, so with `FLUSH_INTV_MIN=5` it can stay unhealthy for up to 5 minutes after the TP returns. `fh` never clears its TP handle, so it reports healthy after a TP outage while its publishes go nowhere.
 
-`kdbx-healthcheck` from the base image is not used: in the image tested here it exited 0 even against a closed port.
+`kdbx-healthcheck` from the base image is not used: in `kdbx-q:5.0.20260723-rocky9-r1` it exits 0 even against a closed port. Its wrapper runs `q -q -T N healthcheck.q ...`, and q only loads the script when it is the first argument, so with options in front the probe never runs. `healthcheck.q` here is invoked script-first.
 
 ## Notes
 
