@@ -25,8 +25,8 @@ upd:{[t;x]
     t insert x;
     };
 
-// @desc TP and HDB endpoints — ports come in bare; we prepend "::" for TCP loopback
-.u.x:("::",first CLI_ARGS[`tpPort];"::",first CLI_ARGS[`hdbPort]);
+// @desc TP and HDB endpoints — bare ports (localhost) or host:port, resolved by .main.addr
+.u.x:(.main.addr first CLI_ARGS[`tpPort];.main.addr first CLI_ARGS[`hdbPort]);
 
 // @desc EOD procedure — save in-memory tables to disk, clear them, signal HDB to reload
 // Calls `.Q.hdpf` to splay each `g#sym` table under the HDB partition for date `x`,
@@ -60,7 +60,7 @@ TP_H:0N;
     if[null h; :0b];
     TP_H::h;
     .u.rep . h ({((.u.sub[;`] each .u.t); `.u `i`L)};::);
-    .log.info[("Connected to TP at port [%s]";2_.u.x[0])];
+    .log.info[("Connected to TP at port [%s]";{(first where not":"=x)_x} .u.x[0])];
     1b
     };
 

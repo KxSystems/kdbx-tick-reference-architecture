@@ -20,8 +20,12 @@
     fp:hsym `$dir,"/",proc,"_",timeStr,".log";
     // Remove default output to stderr/stdout (1/2) and replace with log file
     // TODO: review this method
-    .log.remove[1;`trace`debug`info`warn];
-    .log.remove[2;`error`fatal];
+    // Set LOG_STDOUT (any value) to keep the stdout/stderr sinks too, e.g. so
+    // `docker logs` shows output when running in a container
+    if[not count getenv`LOG_STDOUT;
+        .log.remove[1;`trace`debug`info`warn];
+        .log.remove[2;`error`fatal];
+    ];
     // Open handle and add custom file to log sinks
     h:hopen fp;
     // Store file handle and date for rollover management

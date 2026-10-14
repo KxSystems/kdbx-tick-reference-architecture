@@ -26,9 +26,9 @@ upd:{[t;x]
     t insert x;
     };
 
-// @desc TP endpoint — bare port from CLI, prepended with "::" for TCP loopback
+// @desc TP endpoint — bare port (localhost) or host:port from CLI, resolved by .main.addr
 // Wrapped as a single-element list so `.u.x 0` stays uniform with the main RDB shape.
-.u.x:enlist "::",first CLI_ARGS[`tpPort];
+.u.x:enlist .main.addr first CLI_ARGS[`tpPort];
 
 // @desc Watermark file (hsym) — written by the writedown RDB at <idbDir>/.watermark, holding the
 // single timespan "every row with time < W is persisted to the IDB". The chained RDB serves the
@@ -99,7 +99,7 @@ TP_H:0N;
     // Replay rebuilds the whole day; shed everything already flushed to the IDB so the `rdb` tier
     // holds only the un-persisted tail (disjoint from `idb`).
     .rdb.applyWatermark[];
-    .log.info[("Connected to TP at port [%s]";2_.u.x[0])];
+    .log.info[("Connected to TP at port [%s]";{(first where not":"=x)_x} .u.x[0])];
     1b
     };
 

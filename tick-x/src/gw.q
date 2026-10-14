@@ -32,7 +32,7 @@ CONNECTIONS:([handle:`int$()];proc:`$();alive:`boolean$());
 // @param ports   {string[]}  List of port strings to try in order
 .kxgw.tryConnect:{[label;ports]
     {[label;i;port]
-        h:@[hopen; `$"::",port; {0N}];
+        h:@[hopen; `$.main.addr port; {0N}];
         if[null h;
             .log.warn[("Cannot connect to ",label,(string i)," on port ",port," - will retry on timer")];
             :()
