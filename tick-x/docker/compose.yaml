@@ -27,8 +27,10 @@ x-q: &q
     SCHEMA_DIR: /opt/app/samples/schemas
     TPLOG_NAME: tpLog
 
-# QLIC points at /run/secrets/kx in the image; it expects a directory
-x-license: &license ${KX_LICENSE_FILE:-${HOME}/.kx/kc.lic}:/run/secrets/kx/kc.lic:ro
+# QLIC points at /run/secrets/kx in the image and expects a directory. Mount the
+# host licence directory there so q does its normal search (kc.lic, then k4.lic).
+# Uses the host's QLIC if set, else ~/.kx.
+x-license: &license ${QLIC:-${HOME}/.kx}:/run/secrets/kx:ro
 x-proclogs: &proclogs proclogs:/opt/app/app/proclogs
 
 x-health: &health
