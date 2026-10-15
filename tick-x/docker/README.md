@@ -5,7 +5,7 @@ Runs the [tick-x reference architecture](../README.md) as a Docker Compose proje
 ## Prerequisites
 
 - Docker with Compose v2
-- A KDB-X licence file (`kc.lic`). The default location is `~/.kx/kc.lic`; set `KX_LICENSE_FILE` to use another.
+- A KDB-X licence (`kc.lic` or `k4.lic`) in a directory. The default is `$QLIC` if you have it set, otherwise `~/.kx`; set `QLIC` to use another directory. The directory is mounted read-only at `/run/secrets/kx` (the image's `QLIC`), so q does its normal licence search there and every file in it is visible to the containers. Point `QLIC` at a directory holding only licence files if `~/.kx` contains anything else.
 - Access to the `kdbx-q` image (default `portal.dl.kx.com/kdbx-q:5.0.20260723-rocky9-r1`). Set `BASE_IMAGE` to use another variant or registry.
 - Tested with `kdbx-q:5.0.20260723-rocky9-r1` (2026-10-14): all services healthy and the gateway returns data. The `kdbx-docker` project publishes Rocky Linux 9 images only, so there is no Debian variant to select.
 - Network access at build time: the image build fetches the `kx.log` and `printf` modules from their [GitHub repos](https://github.com/KxSystems), since the base image only ships `kx.rest`.
@@ -36,7 +36,7 @@ Every setting is optional. Defaults match [`samples/sample_env`](../../samples/s
 
 | Variable | Default | Equivalent script option |
 | --- | --- | --- |
-| `KX_LICENSE_FILE` | `~/.kx/kc.lic` | `QLIC` / local licence |
+| `QLIC` | `~/.kx` | `QLIC` |
 | `BASE_IMAGE` | `portal.dl.kx.com/kdbx-q:5.0.20260723-rocky9-r1` | the installed `q` |
 | `SECONDARIES` | `0` | `startup.sh -s` |
 | `LOG_LEVEL` | `info` | `LOG_LEVEL` |
