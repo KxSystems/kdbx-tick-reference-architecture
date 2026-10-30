@@ -1,0 +1,111 @@
+# One Deployment per process: the compose service, as a pod.
+{{- range $name, $p := .Values.processes }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate               # never two pods writing the same volume
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+        app.kubernetes.io/instance: {{ $.Release.Name }}
+    spec:
+      # Every pod of this release must share a node, because they share
+      # node-local volumes. The first pod lands anywhere; the rest follow it.
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: {{ $.Release.Name }}
+      {{- with $.Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        fsGroup: {{ $.Values.fsGroup }}
+      {{- with $.Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $p.connects }}
+      # Wait for every process this one connects to (compose depends_on: service_healthy).
+      initContainers:
+        {{- range $flag, $dep := $p.connects }}
+        {{- $d := index $.Values.processes $dep }}
+        - name: wait-{{ $dep }}
+          image: {{ $.Values.image.repository }}:{{ $.Values.image.tag }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - 'until q /opt/app/healthcheck.q {{ $d.port }} {{ $dep }}{{ if $d.probeExpr }} "$EXPR"{{ end }}; do sleep 2; done'
+          {{- if $d.probeExpr }}
+          env:
+            - name: EXPR
+              value: {{ $d.probeExpr | quote }}
+          {{- end }}
+          volumeMounts:
+            - {name: licence, mountPath: /run/secrets/kx, readOnly: true}
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: q
+          image: {{ $.Values.image.repository }}:{{ $.Values.image.tag }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          command:
+            - q
+            - {{ $p.script }}
+            - -p
+            - {{ $p.port | quote }}
+            - -s
+            - {{ $.Values.secondaries | quote }}
+            {{- range $p.args }}
+            - {{ . | quote }}
+            {{- end }}
+            {{- range $flag, $dep := $p.connects }}
+            - -{{ $flag }}
+            - {{ printf "%s:%v" $dep (index $.Values.processes $dep).port | quote }}
+            {{- end }}
+          env:
+            {{- range $k, $v := $.Values.env }}
+            - {name: {{ $k }}, value: {{ $v | quote }}}
+            {{- end }}
+          ports:
+            - {name: q, containerPort: {{ $p.port }}}
+          # compose healthcheck. Readiness only: unhealthy means "not ready",
+          # never "restarted", exactly as in compose.
+          readinessProbe:
+            exec:
+              command: ["q", "/opt/app/healthcheck.q", {{ $p.port | quote }}{{ if $p.probeExpr }}, "127.0.0.1", {{ $p.probeExpr | quote }}{{ end }}]
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - {name: licence, mountPath: /run/secrets/kx, readOnly: true}
+            - {name: proclogs, mountPath: /opt/app/app/proclogs}
+            {{- range $vol, $mode := $p.mounts }}
+            - {name: {{ $vol }}, mountPath: /opt/app/app/{{ $vol }}, readOnly: {{ eq $mode "ro" }}}
+            {{- end }}
+      volumes:
+        - name: licence
+          secret:
+            secretName: {{ $.Values.licence.existingSecret }}
+        - name: proclogs
+          emptyDir: {}
+        {{- range $vol, $mode := $p.mounts }}
+        - name: {{ $vol }}
+          persistentVolumeClaim:
+            claimName: {{ $vol }}
+        {{- end }}
+{{- end }}

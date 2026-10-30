@@ -14,11 +14,13 @@ You can find 2 different architecture configurations within this repository:
 
 - basic Tick architecture with some additional customization beyond the barebones [KDB-X System Architecure](https://code.kx.com/kdb-x/how_to/manage_streaming_data/architecture.html) outlined in the KDB-X documentation
 - Docker Compose project: [tick/docker](./tick/docker/README.md)
+- Helm chart (single-node Kubernetes): [tick/helm](./tick/helm/README.md)
 
 ### [tick-x](./tick-x/README.md)
 
 - An extension of base Tick that introduces an intraday database and writedown only RDB process. The main RDB is dedicated to receiving TP data and periodically flushing int-partitions to disk; a chained RDB subscribes to the TP in parallel and serves all `rdb` queries (so the writedown RDB never blocks); an IDB process loads the flushed int-partitions and serves them as the `idb` tier through the gateway
 - Docker Compose project: [tick-x/docker](./tick-x/docker/README.md)
+- Helm chart (single-node Kubernetes): [tick-x/helm](./tick-x/helm/README.md)
 
 ## Repository Structure
 

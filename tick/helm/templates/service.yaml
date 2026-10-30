@@ -1,0 +1,16 @@
+# One Service per process, named like the compose service, so `tp:5010` just works.
+{{- range $name, $p := .Values.processes }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+spec:
+  selector:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+  ports:
+    - name: q
+      port: {{ $p.port }}
+      targetPort: {{ $p.port }}
+{{- end }}

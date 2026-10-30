@@ -1,0 +1,5 @@
+apiVersion: v2
+name: kdbx-tick
+description: tick reference architecture on a single node (transcribed from tick/docker/compose.yaml)
+type: application
+version: 0.1.0

@@ -12,6 +12,7 @@ Shared collection of architecture diagrams and technical documents. The committe
 - [tick/](tick/) — base tick stack (TP / RDB / HDB / FH / RTE / GW); simplest reference pattern
 - [tick-x/](tick-x/) — adds intraday writedown: RDB writes int-partitions, IDB serves them, CHAINED_RDB serves queries
 - `docker/` under `tick/` and `tick-x/` — Docker Compose project (Dockerfile, `compose.yaml`, `example.env`, FH timer helper, README) running the stack on the official `kdbx-q` image
+- `helm/` under `tick/` and `tick-x/` — single-node Helm chart (README, `values.yaml`, `templates/`) running the stack on one Kubernetes node; the compose project transcribed, one Deployment per process
 - [samples/](samples/) — shared schemas, analytics, sample data, sample env
 - [README.md](README.md) — top-level overview and per-variant entry points
 

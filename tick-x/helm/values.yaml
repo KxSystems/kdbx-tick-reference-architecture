@@ -1,0 +1,102 @@
+image:
+  repository: kdbx-tick-reference
+  tag: tick-x
+  pullPolicy: IfNotPresent     # build locally with `docker compose build`
+  pullSecrets: []
+
+# Secret holding kc.lic (or k4.lic); mounted as a directory at /run/secrets/kx.
+#   kubectl create secret generic kdbx-licence --from-file=kc.lic=$HOME/.kx/kc.lic
+licence:
+  existingSecret: kdbx-licence
+
+secondaries: 0
+fsGroup: 10001                 # the image runs as uid/gid 10001 (kx); makes volumes group-writable where the StorageClass honours it
+nodeSelector: {}               # optional: pin all pods to one node, e.g. {kubernetes.io/hostname: mynode}
+storageClassName: ""           # empty = cluster default (k3s: local-path)
+
+env:
+  TZ: UTC
+  LOG_LEVEL: info
+  LOG_STDOUT: "1"
+  PROCESS_LOG_DIR: /opt/app/app/proclogs
+  SCHEMA_DIR: /opt/app/samples/schemas
+  TPLOG_NAME: tpLog
+
+# One PVC per compose named volume (ReadWriteOnce; single node).
+volumes:
+  tplogs: {size: 5Gi}
+  hdb: {size: 5Gi}
+  idb: {size: 5Gi}
+
+# One Deployment + Service per entry. `args` is the compose `command` minus -p/-s and
+# the connection flags. `connects: {tpPort: tp}` becomes `-tpPort tp:<tp's port>`, so each
+# port is defined once, below. A process also waits for everything it connects to
+# (compose depends_on). mounts: volume -> ro|rw.
+# Single writer per volume: TP -> tplogs, RDB -> hdb and idb.
+# Mount the whole idb dir, never `today/`: the RDB rm -rf's it at end of day.
+processes:
+  tp:
+    script: tick-x/src/tick.q
+    port: 5010
+    args: [-schemaDir, /opt/app/samples/schemas, -tplogDir, /opt/app/app/tplogs, -procName, TP]
+    mounts: {tplogs: rw}
+  idb:
+    script: tick-x/src/idb.q
+    port: 5015
+    args: [-hdbDir, /opt/app/app/hdb, -idbDir, /opt/app/app/idb, -procName, IDB]
+    mounts: {hdb: ro, idb: ro}
+  hdb:
+    script: tick-x/src/hdb.q
+    port: 5012
+    args: [-hdbDir, /opt/app/app/hdb, -procName, HDB]
+    mounts: {hdb: ro}
+  # Writedown role: flushes int-partitions to the IDB dir every -flushIntvMin
+  # minutes (minimum 1), merges them into the HDB at end of day.
+  rdb:
+    script: tick-x/src/rdb.q
+    port: 5011
+    args:
+      - -tplogDir
+      - /opt/app/app/tplogs
+      - -hdbDir
+      - /opt/app/app/hdb
+      - -idbDir
+      - /opt/app/app/idb
+      - -flushIntvMin
+      - "5"
+      - -procName
+      - RDB
+    connects: {tpPort: tp, hdbPort: hdb, idbPort: idb}
+    mounts: {tplogs: ro, hdb: rw, idb: rw}
+    probeExpr: not null TP_H
+  # Query role: full-day in-memory view; serves the GW's `rdb` tier.
+  chained-rdb:
+    script: tick-x/src/chainedrdb.q
+    port: 5017
+    args: [-tplogDir, /opt/app/app/tplogs, -hdbDir, /opt/app/app/hdb, -idbDir, /opt/app/app/idb, -procName, CHAINED_RDB]
+    connects: {tpPort: tp}
+    mounts: {tplogs: ro, hdb: ro, idb: ro}   # idb: reads .watermark
+    probeExpr: not null TP_H
+  fh:
+    script: tick-x/src/fh.q
+    port: 5014
+    args:
+      - -fhTimer
+      - "60000"          # ms; retune live with kubectl exec (see README)
+      - -procName
+      - FH
+    connects: {tpPort: tp}
+    probeExpr: not null TP_H
+  rte:
+    script: tick-x/src/rte.q
+    port: 5016
+    args: [-procName, RTE]
+    connects: {tpPort: tp}
+    probeExpr: not null TP_H
+  # `rdb` tier -> CHAINED_RDB, `idb` tier -> IDB, `hdb` tier -> HDB
+  gw:
+    script: tick-x/src/gw.q
+    port: 5013                 # q IPC + REST
+    args: [-analyticsDir, /opt/app/samples/analytics, -procName, GW]
+    connects: {rdbPort: chained-rdb, idbPort: idb, hdbPort: hdb}
+    probeExpr: 'all {0<count select from CONNECTIONS where alive,proc like x} each ("RDB_*";"IDB_*";"HDB_*")'

@@ -1,0 +1,75 @@
+image:
+  repository: kdbx-tick-reference
+  tag: tick
+  pullPolicy: IfNotPresent     # build locally with `docker compose build`
+  pullSecrets: []
+
+# Secret holding kc.lic (or k4.lic); mounted as a directory at /run/secrets/kx.
+#   kubectl create secret generic kdbx-licence --from-file=kc.lic=$HOME/.kx/kc.lic
+licence:
+  existingSecret: kdbx-licence
+
+secondaries: 0
+fsGroup: 10001                 # the image runs as uid/gid 10001 (kx); makes volumes group-writable where the StorageClass honours it
+nodeSelector: {}               # optional: pin all pods to one node, e.g. {kubernetes.io/hostname: mynode}
+storageClassName: ""           # empty = cluster default (k3s: local-path)
+
+env:
+  TZ: UTC
+  LOG_LEVEL: info
+  LOG_STDOUT: "1"
+  PROCESS_LOG_DIR: /opt/app/app/proclogs
+  SCHEMA_DIR: /opt/app/samples/schemas
+  TPLOG_NAME: tpLog
+
+# One PVC per compose named volume (ReadWriteOnce; single node).
+volumes:
+  tplogs: {size: 5Gi}
+  hdb: {size: 5Gi}
+
+# One Deployment + Service per entry. `args` is the compose `command` minus -p/-s and
+# the connection flags. `connects: {tpPort: tp}` becomes `-tpPort tp:<tp's port>`, so each
+# port is defined once, below. A process also waits for everything it connects to
+# (compose depends_on). mounts: volume -> ro|rw.
+processes:
+  tp:
+    script: tick/src/tick.q
+    port: 5010
+    args: [-schemaDir, /opt/app/samples/schemas, -tplogDir, /opt/app/app/tplogs, -procName, TP]
+    mounts: {tplogs: rw}
+  hdb:
+    script: tick/src/hdb.q
+    port: 5012
+    args: [-hdbDir, /opt/app/app/hdb, -procName, HDB]
+    mounts: {hdb: rw}
+  rdb:
+    script: tick/src/rdb.q
+    port: 5011
+    args: [-tplogDir, /opt/app/app/tplogs, -hdbDir, /opt/app/app/hdb, -procName, RDB]
+    connects: {tpPort: tp, hdbPort: hdb}
+    # The RDB replays the TP log by the path the TP reports, so the mount
+    # point matches the TP's; it also writes the HDB at end of day.
+    mounts: {tplogs: rw, hdb: rw}
+    probeExpr: not null TP_H
+  fh:
+    script: tick/src/fh.q
+    port: 5014
+    args:
+      - -fhTimer
+      - "60000"          # ms; retune live with kubectl exec (see README)
+      - -procName
+      - FH
+    connects: {tpPort: tp}
+    probeExpr: not null TP_H
+  rte:
+    script: tick/src/rte.q
+    port: 5016
+    args: [-procName, RTE]
+    connects: {tpPort: tp}
+    probeExpr: not null TP_H
+  gw:
+    script: tick/src/gw.q
+    port: 5013                 # q IPC + REST
+    args: [-analyticsDir, /opt/app/samples/analytics, -procName, GW]
+    connects: {rdbPort: rdb, hdbPort: hdb}
+    probeExpr: 'all {0<count select from CONNECTIONS where alive,proc like x} each ("RDB_*";"HDB_*")'

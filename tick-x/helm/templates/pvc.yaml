@@ -1,0 +1,20 @@
+# One PVC per compose named volume. Kept on `helm uninstall`, like `docker compose down`.
+{{- range $name, $v := .Values.volumes }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with $.Values.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $v.size }}
+{{- end }}

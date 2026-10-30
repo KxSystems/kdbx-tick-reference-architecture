@@ -98,6 +98,10 @@ The following KDB-X modules are required for full deployment of the system as th
 
 To run the whole stack in containers instead of installing KDB-X and the modules locally, see [docker/README.md](./docker/README.md). It starts the same eight processes from the official `kdbx-q` image with one `docker compose up`.
 
+### Kubernetes
+
+To run the same stack on a single-node Kubernetes cluster (k3s, k3d, OrbStack), see [helm/README.md](./helm/README.md). It is the compose project transcribed to a Helm chart, with the containers sharing local storage on the one node.
+
 ### Configuration
 
 Tick-X is designed to run out-of-the-box with no per-deployment setup. All configuration lives in a single shared env file, [`samples/sample_env`](../samples/sample_env), which the `tick/scripts/` and `tick-x/scripts/` scripts source — so a value changed there applies to both stacks. `tick-x/scripts/startup.sh` auto-creates the runtime directories on first run. To customize without editing the committed defaults, copy the file and pass it with `-e` (e.g. `./tick-x/scripts/startup.sh -e .env`).
